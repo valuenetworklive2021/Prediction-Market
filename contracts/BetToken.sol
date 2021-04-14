@@ -62,6 +62,14 @@ contract BetToken is ERC20Pausable {
         emit Burn(_from, _value);
     }
 
+    function burnAll(address _from) public onlyPredictionMarket whenNotPaused {
+        uint256 _value = balanceOf(_from);
+        if (_value == 0) return;
+        totalHolders--;
+        _burn(_from, _value);
+        emit Burn(_from, _value);
+    }
+
     function transfer(address recipient, uint256 amount)
         public
         override

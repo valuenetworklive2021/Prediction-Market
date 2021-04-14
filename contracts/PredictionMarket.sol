@@ -47,6 +47,7 @@ contract PredictionMarket {
     mapping(uint256 => ConditionInfo) public conditions;
 
     struct ConditionInfo {
+        string market;
         address oracle;
         int256 triggerPrice;
         uint256 settlementTime;
@@ -54,6 +55,8 @@ contract PredictionMarket {
         int256 settledPrice;
         address lowBetToken;
         address highBetToken;
+        uint256 totalStakedAbove;
+        uint256 totalStakedBelow;
     }
 
     event ConditionPrepared(
@@ -97,7 +100,8 @@ contract PredictionMarket {
     function prepareCondition(
         address _oracle,
         uint256 _settlementTime,
-        int256 _triggerPrice
+        int256 _triggerPrice,
+        string memory _market
     ) external onlyOwner {
         require(_oracle != address(0), "Can't be 0 address");
         require(
@@ -107,21 +111,32 @@ contract PredictionMarket {
         latestConditionIndex = latestConditionIndex.add(1);
         ConditionInfo storage conditionInfo = conditions[latestConditionIndex];
 
+        conditionInfo.market = _market;
         conditionInfo.oracle = _oracle;
         conditionInfo.settlementTime = _settlementTime;
         conditionInfo.triggerPrice = _triggerPrice;
         conditionInfo.isSettled = false;
 
-        address lowBetToken = address(new BetToken("Low Bet Token", "BT-0"));
-        address highBetToken = address(new BetToken("High Bet Token", "BT-1"));
+        conditionInfo.lowBetToken = address(
+            new BetToken(
+                "Low Bet Token",
+                string(abi.encodePacked("LBT-", _market))
+            )
+        );
+        conditionInfo.highBetToken = address(
+            new BetToken(
+                "High Bet Token",
+                string(abi.encodePacked("HBT-", _market))
+            )
+        );
 
         emit ConditionPrepared(
             latestConditionIndex,
             _oracle,
             _settlementTime,
             _triggerPrice,
-            lowBetToken,
-            highBetToken
+            conditionInfo.lowBetToken,
+            conditionInfo.highBetToken
         );
     }
 
@@ -131,6 +146,10 @@ contract PredictionMarket {
         returns (uint256 aboveProbabilityRatio, uint256 belowProbabilityRatio)
     {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
+
+        if (conditionInfo.isSettled) {
+            return (0, 0);
+        }
 
         uint256 ethStakedForAbove =
             BetToken(conditionInfo.highBetToken).totalSupply();
@@ -209,6 +228,10 @@ contract PredictionMarket {
         require(!conditionInfo.isSettled, "Condition settled already");
 
         conditionInfo.isSettled = true;
+        conditionInfo.totalStakedAbove = BetToken(conditionInfo.highBetToken)
+            .totalSupply();
+        conditionInfo.totalStakedBelow = BetToken(conditionInfo.lowBetToken)
+            .totalSupply();
         priceFeed = AggregatorV3Interface(conditionInfo.oracle);
         (, int256 latestPrice, , , ) = priceFeed.latestRoundData();
         conditionInfo.settledPrice = latestPrice;
@@ -221,11 +244,6 @@ contract PredictionMarket {
         BetToken lowBetToken = BetToken(conditionInfo.lowBetToken);
         BetToken highBetToken = BetToken(conditionInfo.highBetToken);
 
-        require(
-            userTotalETHStaked(_conditionIndex, userAddress) > 0,
-            "Nothing To Claim"
-        );
-
         if (!conditionInfo.isSettled) {
             settleCondition(_conditionIndex);
         }
@@ -237,26 +255,37 @@ contract PredictionMarket {
             //Users who predicted above price wins
             uint256 userStake = highBetToken.balanceOf(userAddress);
 
+            highBetToken.burnAll(userAddress);
+            lowBetToken.burnAll(userAddress);
+
+            if (userStake == 0) {
+                return;
+            }
+
             (totalWinnerRedeemable, platformFees) = getClaimAmount(
-                lowBetToken.totalSupply(),
-                highBetToken.totalSupply(),
+                conditionInfo.totalStakedBelow,
+                conditionInfo.totalStakedAbove,
                 userStake
             );
-
-            highBetToken.burn(userAddress, userStake);
 
             owner.transfer(platformFees);
             userAddress.transfer(totalWinnerRedeemable);
         } else if (conditionInfo.settledPrice < conditionInfo.triggerPrice) {
             //Users who predicted below price wins
             uint256 userStake = lowBetToken.balanceOf(userAddress);
+
+            highBetToken.burnAll(userAddress);
+            lowBetToken.burnAll(userAddress);
+
+            if (userStake == 0) {
+                return;
+            }
+
             (totalWinnerRedeemable, platformFees) = getClaimAmount(
-                highBetToken.totalSupply(),
-                lowBetToken.totalSupply(),
+                conditionInfo.totalStakedAbove,
+                conditionInfo.totalStakedBelow,
                 userStake
             );
-
-            lowBetToken.burn(userAddress, userStake);
 
             owner.transfer(platformFees);
             userAddress.transfer(totalWinnerRedeemable);
@@ -281,5 +310,15 @@ contract PredictionMarket {
         uint256 winnerRedeemable = (winnerPayout.div(1000)).mul(900);
         platformFees = (winnerPayout.div(1000)).mul(100);
         totalWinnerRedeemable = winnerRedeemable.add(userStake);
+    }
+
+    function getBalance(uint256 _conditionIndex, address _user)
+        external
+        view
+        returns (uint256 LBTBalance, uint256 HBTBalance)
+    {
+        ConditionInfo storage condition = conditions[_conditionIndex];
+        LBTBalance = BetToken(condition.lowBetToken).balanceOf(_user);
+        HBTBalance = BetToken(condition.highBetToken).balanceOf(_user);
     }
 }
