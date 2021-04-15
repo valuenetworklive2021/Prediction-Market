@@ -21,6 +21,7 @@ contract BetToken is ERC20Pausable {
     constructor(string memory _name, string memory _symbol)
         ERC20(_name, _symbol)
     {
+        _setupDecimals(8);
         predictionMarket = msg.sender;
     }
 
