@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "compile": "npx truffle compile"
   },
   "repository": {
     "type": "git",
@@ -15,5 +16,9 @@
   "bugs": {
     "url": "https://github.com/valuenetworklive2021/Prediction-Market/issues"
   },
-  "homepage": "https://github.com/valuenetworklive2021/Prediction-Market#readme"
+  "homepage": "https://github.com/valuenetworklive2021/Prediction-Market#readme",
+  "dependencies": {
+    "@openzeppelin/contracts": "3.4.1-solc-0.7",
+    "truffle": "^5.3.1"
+  }
 }
