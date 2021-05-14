@@ -1,48 +1,22 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.7.0;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 import "./BetToken.sol";
+import "./AggregatorV3Interface.sol";
 
-interface AggregatorV3Interface {
-    function decimals() external view returns (uint8);
-
-    function description() external view returns (string memory);
-
-    function version() external view returns (uint256);
-
-    // getRoundData and latestRoundData should both raise "No data present"
-    // if they do not have data to report, instead of returning unset values
-    // which could be misinterpreted as actual reported values.
-    function getRoundData(uint80 _roundId)
-        external
-        view
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        );
-
-    function latestRoundData()
-        external
-        view
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        );
-}
-
-contract PredictionMarket {
+contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
     using SafeMath for uint256;
 
     AggregatorV3Interface internal priceFeed;
-
     uint256 public latestConditionIndex;
-    address payable public owner;
+
+    uint256 public fee;
+    uint256 public feeRate;
+    address operatorAddress;
 
     mapping(uint256 => ConditionInfo) public conditions;
 
@@ -57,6 +31,7 @@ contract PredictionMarket {
         address highBetToken;
         uint256 totalStakedAbove;
         uint256 totalStakedBelow;
+        uint256 totalEthClaimable;
     }
 
     event ConditionPrepared(
@@ -67,7 +42,6 @@ contract PredictionMarket {
         address lowBetTokenAddress,
         address highBetTokenAddress
     );
-
     event UserPrediction(
         uint256 indexed conditionIndex,
         address indexed userAddress,
@@ -75,26 +49,37 @@ contract PredictionMarket {
         uint8 prediction,
         uint256 timestamp
     );
-
     event UserClaimed(
         uint256 indexed conditionIndex,
         address indexed userAddress,
         uint256 indexed winningAmount
     );
-
     event ConditionSettled(
         uint256 indexed conditionIndex,
         int256 indexed settledPrice,
         uint256 timestamp
     );
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not Owner");
+    modifier onlyOperator() {
+        require(msg.sender == operatorAddress, "operator: wut?");
         _;
     }
 
-    constructor() {
-        owner = msg.sender;
+    function setOperator(address _operatorAddress) external onlyOwner {
+        require(_operatorAddress != address(0), "Cannot be zero address");
+        operatorAddress = _operatorAddress;
+    }
+
+    function setFee(uint256 _feeRate) external onlyOwner {
+        feeRate = _feeRate;
+    }
+
+    function execute(uint256 conditionIndex, uint256 interval) external {
+        claimFor(msg.sender, conditionIndex);
+        //get condition details of provided index and pass it to prepare condition
+        //settlement time should be interval + now
+        //take triggerprice from getPrice(oracleAddress)
+        // prepareCondition(oracle, time, );
     }
 
     function prepareCondition(
@@ -102,7 +87,7 @@ contract PredictionMarket {
         uint256 _settlementTime,
         int256 _triggerPrice,
         string memory _market
-    ) external onlyOwner {
+    ) public whenNotPaused {
         require(_oracle != address(0), "Can't be 0 address");
         require(
             _settlementTime > block.timestamp,
@@ -110,13 +95,11 @@ contract PredictionMarket {
         );
         latestConditionIndex = latestConditionIndex.add(1);
         ConditionInfo storage conditionInfo = conditions[latestConditionIndex];
-
         conditionInfo.market = _market;
         conditionInfo.oracle = _oracle;
         conditionInfo.settlementTime = _settlementTime;
         conditionInfo.triggerPrice = _triggerPrice;
         conditionInfo.isSettled = false;
-
         conditionInfo.lowBetToken = address(
             new BetToken(
                 "Low Bet Token",
@@ -129,7 +112,6 @@ contract PredictionMarket {
                 string(abi.encodePacked("HBT-", _market))
             )
         );
-
         emit ConditionPrepared(
             latestConditionIndex,
             _oracle,
@@ -146,36 +128,32 @@ contract PredictionMarket {
         returns (uint256 aboveProbabilityRatio, uint256 belowProbabilityRatio)
     {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
-
         if (conditionInfo.isSettled) {
             return (0, 0);
         }
-
         uint256 ethStakedForAbove =
             BetToken(conditionInfo.highBetToken).totalSupply();
-
         uint256 ethStakedForBelow =
             BetToken(conditionInfo.lowBetToken).totalSupply();
 
-        uint256 totalETHStaked = ethStakedForAbove.add(ethStakedForBelow);
+        uint256 totalEthStaked = ethStakedForAbove.add(ethStakedForBelow);
 
-        aboveProbabilityRatio = totalETHStaked > 0
-            ? ethStakedForAbove.mul(1e18).div(totalETHStaked)
+        aboveProbabilityRatio = totalEthStaked > 0
+            ? ethStakedForAbove.mul(1e18).div(totalEthStaked)
             : 0;
-        belowProbabilityRatio = totalETHStaked > 0
-            ? ethStakedForBelow.mul(1e18).div(totalETHStaked)
+        belowProbabilityRatio = totalEthStaked > 0
+            ? ethStakedForBelow.mul(1e18).div(totalEthStaked)
             : 0;
     }
 
     function userTotalETHStaked(uint256 _conditionIndex, address userAddress)
-        public
+        external
         view
         returns (uint256 totalEthStaked)
     {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
         uint256 ethStakedForAbove =
             BetToken(conditionInfo.highBetToken).balanceOf(userAddress);
-
         uint256 ethStakedForBelow =
             BetToken(conditionInfo.lowBetToken).balanceOf(userAddress);
 
@@ -183,10 +161,21 @@ contract PredictionMarket {
     }
 
     function betOnCondition(uint256 _conditionIndex, uint8 _prediction)
-        public
+        external
         payable
     {
+        //call betOncondition
+    }
+
+    function betOnConditionFor(
+        address _user,
+        uint256 _conditionIndex,
+        uint8 _prediction
+    ) public payable whenNotPaused {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
+
+        require(_user != address(0), "ERR_INVALID_ADDRESS");
+
         require(conditionInfo.oracle != address(0), "Condition doesn't exists");
         require(
             block.timestamp < conditionInfo.settlementTime,
@@ -196,29 +185,21 @@ contract PredictionMarket {
         require(userETHStaked > 0 wei, "Bet cannot be 0");
         require((_prediction == 0) || (_prediction == 1), "Invalid Prediction"); //prediction = 0 (price will be below), if 1 (price will be above)
 
-        address userAddress = msg.sender;
-
         if (_prediction == 0) {
-            BetToken(conditionInfo.lowBetToken).mint(
-                userAddress,
-                userETHStaked
-            );
+            BetToken(conditionInfo.lowBetToken).mint(_user, userETHStaked);
         } else {
-            BetToken(conditionInfo.highBetToken).mint(
-                userAddress,
-                userETHStaked
-            );
+            BetToken(conditionInfo.highBetToken).mint(_user, userETHStaked);
         }
         emit UserPrediction(
             _conditionIndex,
-            userAddress,
+            _user,
             userETHStaked,
             _prediction,
             block.timestamp
         );
     }
 
-    function settleCondition(uint256 _conditionIndex) public {
+    function settleCondition(uint256 _conditionIndex) public whenNotPaused {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
         require(conditionInfo.oracle != address(0), "Condition doesn't exists");
         require(
@@ -232,83 +213,103 @@ contract PredictionMarket {
             .totalSupply();
         conditionInfo.totalStakedBelow = BetToken(conditionInfo.lowBetToken)
             .totalSupply();
-        priceFeed = AggregatorV3Interface(conditionInfo.oracle);
-        (, int256 latestPrice, , , ) = priceFeed.latestRoundData();
-        conditionInfo.settledPrice = latestPrice;
-        emit ConditionSettled(_conditionIndex, latestPrice, block.timestamp);
+
+        uint256 _fees = conditionInfo.totalEthClaimable.div(1000).mul(feeRate);
+
+        conditionInfo.totalEthClaimable = conditionInfo
+            .totalStakedAbove
+            .add(conditionInfo.totalStakedBelow)
+            .sub(_fees);
+
+        fee = fee.add(_fees);
+        conditionInfo.settledPrice = getPrice(conditionInfo.oracle);
+
+        emit ConditionSettled(
+            _conditionIndex,
+            conditionInfo.settledPrice,
+            block.timestamp
+        );
+    }
+
+    function getPrice(address oracle) internal returns (int256 latestPrice) {
+        priceFeed = AggregatorV3Interface(oracle);
+        (, latestPrice, , , ) = priceFeed.latestRoundData();
     }
 
     function claim(uint256 _conditionIndex) public {
+        //require for non zero address
+        //call claim with msg.sender as _for
+    }
+
+    function claimFor(address payable _userAddress, uint256 _conditionIndex)
+        public
+        whenNotPaused
+        nonReentrant
+    {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
-        address payable userAddress = msg.sender;
+
         BetToken lowBetToken = BetToken(conditionInfo.lowBetToken);
         BetToken highBetToken = BetToken(conditionInfo.highBetToken);
-
         if (!conditionInfo.isSettled) {
             settleCondition(_conditionIndex);
         }
 
-        uint256 platformFees; // remaining 10% will be treated as platformFees
-        uint256 totalWinnerRedeemable; //Amount Redeemable including winnerRedeemable & user initial Stake
-
-        if (conditionInfo.settledPrice >= conditionInfo.triggerPrice) {
+        uint256 totalWinnerRedeemable;
+        //Amount Redeemable including winnerRedeemable & user initial Stake
+        if (conditionInfo.settledPrice > conditionInfo.triggerPrice) {
             //Users who predicted above price wins
-            uint256 userStake = highBetToken.balanceOf(userAddress);
-
-            highBetToken.burnAll(userAddress);
-            lowBetToken.burnAll(userAddress);
+            uint256 userStake = highBetToken.balanceOf(_userAddress);
 
             if (userStake == 0) {
                 return;
             }
-
-            (totalWinnerRedeemable, platformFees) = getClaimAmount(
+            totalWinnerRedeemable = getClaimAmount(
                 conditionInfo.totalStakedBelow,
                 conditionInfo.totalStakedAbove,
                 userStake
             );
-
-            owner.transfer(platformFees);
-            userAddress.transfer(totalWinnerRedeemable);
         } else if (conditionInfo.settledPrice < conditionInfo.triggerPrice) {
             //Users who predicted below price wins
-            uint256 userStake = lowBetToken.balanceOf(userAddress);
-
-            highBetToken.burnAll(userAddress);
-            lowBetToken.burnAll(userAddress);
+            uint256 userStake = lowBetToken.balanceOf(_userAddress);
 
             if (userStake == 0) {
                 return;
             }
-
-            (totalWinnerRedeemable, platformFees) = getClaimAmount(
+            totalWinnerRedeemable = getClaimAmount(
                 conditionInfo.totalStakedAbove,
                 conditionInfo.totalStakedBelow,
                 userStake
             );
-
-            owner.transfer(platformFees);
-            userAddress.transfer(totalWinnerRedeemable);
+        } else {
+            fee = fee.add(conditionInfo.totalEthClaimable);
+            totalWinnerRedeemable = 0;
         }
-        emit UserClaimed(_conditionIndex, userAddress, totalWinnerRedeemable);
+
+        highBetToken.burnAll(_userAddress);
+        lowBetToken.burnAll(_userAddress);
+
+        _userAddress.transfer(totalWinnerRedeemable);
+
+        emit UserClaimed(_conditionIndex, _userAddress, totalWinnerRedeemable);
     }
 
-    //totalPayout - Payout to be distributed among winners(total eth staked by loosing side)
-    //winnersTotalETHStaked - total eth staked by the winning side
+    function claimFees() external whenNotPaused onlyOwner {
+        if (fee != 0) {
+            fee = 0;
+            address _to = owner();
+            payable(_to).transfer(fee);
+        }
+    }
+
     function getClaimAmount(
         uint256 totalPayout,
         uint256 winnersTotalETHStaked,
         uint256 userStake
-    )
-        internal
-        pure
-        returns (uint256 totalWinnerRedeemable, uint256 platformFees)
-    {
+    ) internal view returns (uint256 totalWinnerRedeemable) {
         uint256 userProportion = userStake.mul(1e18).div(winnersTotalETHStaked);
-
         uint256 winnerPayout = totalPayout.mul(userProportion).div(1e18);
-        uint256 winnerRedeemable = (winnerPayout.div(1000)).mul(900);
-        platformFees = (winnerPayout.div(1000)).mul(100);
+
+        uint256 winnerRedeemable = (winnerPayout.div(1000)).mul(1000 - feeRate);
         totalWinnerRedeemable = winnerRedeemable.add(userStake);
     }
 
