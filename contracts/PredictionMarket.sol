@@ -74,20 +74,40 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
         feeRate = _feeRate;
     }
 
-    function execute(uint256 conditionIndex, uint256 interval) external {
+    function execute(uint256 conditionIndex, uint256 interval)
+        external
+        payable
+        nonReentrant
+        onlyOperator
+    {
+        ConditionInfo storage condition = conditions[conditionIndex];
+        require(condition.oracle != address(0), "ERR_INVALID_CONDITION_INDEX");
+        require(interval >= 300, "ERR_SETTLEMENT_TIME_INTERVAL");
+
+        //settle and claim for previous index
         claimFor(msg.sender, conditionIndex);
-        //get condition details of provided index and pass it to prepare condition
-        //settlement time should be interval + now
-        //take triggerprice from getPrice(oracleAddress)
-        // prepareCondition(oracle, time, );
+
+        //prepare new condition
+        int256 triggerPrice = getPrice(condition.oracle);
+        uint256 newIndex =
+            prepareCondition(
+                condition.oracle,
+                block.timestamp + interval,
+                triggerPrice
+            );
+
+        //betOnConditionFor admin
+        uint256 amount0 = msg.value.div(2);
+
+        betOnConditionFor(msg.sender, newIndex, 0, amount0);
+        betOnConditionFor(msg.sender, newIndex, 1, msg.value.sub(amount0));
     }
 
     function prepareCondition(
         address _oracle,
         uint256 _settlementTime,
-        int256 _triggerPrice,
-        string memory _market
-    ) public whenNotPaused {
+        int256 _triggerPrice
+    ) public whenNotPaused returns (uint256) {
         require(_oracle != address(0), "Can't be 0 address");
         require(
             _settlementTime > block.timestamp,
@@ -95,7 +115,8 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
         );
         latestConditionIndex = latestConditionIndex.add(1);
         ConditionInfo storage conditionInfo = conditions[latestConditionIndex];
-        conditionInfo.market = _market;
+
+        conditionInfo.market = AggregatorV3Interface(_oracle).description();
         conditionInfo.oracle = _oracle;
         conditionInfo.settlementTime = _settlementTime;
         conditionInfo.triggerPrice = _triggerPrice;
@@ -103,13 +124,13 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
         conditionInfo.lowBetToken = address(
             new BetToken(
                 "Low Bet Token",
-                string(abi.encodePacked("LBT-", _market))
+                string(abi.encodePacked("LBT-", conditionInfo.market))
             )
         );
         conditionInfo.highBetToken = address(
             new BetToken(
                 "High Bet Token",
-                string(abi.encodePacked("HBT-", _market))
+                string(abi.encodePacked("HBT-", conditionInfo.market))
             )
         );
         emit ConditionPrepared(
@@ -120,6 +141,8 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
             conditionInfo.lowBetToken,
             conditionInfo.highBetToken
         );
+
+        return latestConditionIndex;
     }
 
     function probabilityRatio(uint256 _conditionIndex)
@@ -170,7 +193,8 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
     function betOnConditionFor(
         address _user,
         uint256 _conditionIndex,
-        uint8 _prediction
+        uint8 _prediction,
+        uint256 _amount
     ) public payable whenNotPaused {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
 
@@ -181,7 +205,9 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
             block.timestamp < conditionInfo.settlementTime,
             "Cannot bet after Settlement Time"
         );
-        uint256 userETHStaked = msg.value;
+
+        require(msg.value >= _amount, "ERR_INVALID_AMOUNT");
+        uint256 userETHStaked = _amount;
         require(userETHStaked > 0 wei, "Bet cannot be 0");
         require((_prediction == 0) || (_prediction == 1), "Invalid Prediction"); //prediction = 0 (price will be below), if 1 (price will be above)
 
