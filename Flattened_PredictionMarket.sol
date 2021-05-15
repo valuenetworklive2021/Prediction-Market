@@ -1,7 +1,7 @@
 // File: @openzeppelin/contracts/utils/Context.sol
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity 0.7.0;
 
 /*
  * @dev Provides information about the current execution context, including the
@@ -24,9 +24,227 @@ abstract contract Context {
     }
 }
 
-// File: @openzeppelin/contracts/token/ERC20/IERC20.sol
+// File: @openzeppelin/contracts/access/Ownable.sol
 
-pragma solidity ^0.7.0;
+/**
+ * @dev Contract module which provides a basic access control mechanism, where
+ * there is an account (an owner) that can be granted exclusive access to
+ * specific functions.
+ *
+ * By default, the owner account will be the one that deploys the contract. This
+ * can later be changed with {transferOwnership}.
+ *
+ * This module is used through inheritance. It will make available the modifier
+ * `onlyOwner`, which can be applied to your functions to restrict their use to
+ * the owner.
+ */
+abstract contract Ownable is Context {
+    address private _owner;
+
+    event OwnershipTransferred(
+        address indexed previousOwner,
+        address indexed newOwner
+    );
+
+    /**
+     * @dev Initializes the contract setting the deployer as the initial owner.
+     */
+    constructor() {
+        address msgSender = _msgSender();
+        _owner = msgSender;
+        emit OwnershipTransferred(address(0), msgSender);
+    }
+
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    function owner() public view virtual returns (address) {
+        return _owner;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        require(owner() == _msgSender(), "Ownable: caller is not the owner");
+        _;
+    }
+
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * `onlyOwner` functions anymore. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will leave the contract without an owner,
+     * thereby removing any functionality that is only available to the owner.
+     */
+    function renounceOwnership() public virtual onlyOwner {
+        emit OwnershipTransferred(_owner, address(0));
+        _owner = address(0);
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Can only be called by the current owner.
+     */
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        require(
+            newOwner != address(0),
+            "Ownable: new owner is the zero address"
+        );
+        emit OwnershipTransferred(_owner, newOwner);
+        _owner = newOwner;
+    }
+}
+
+// File: @openzeppelin/contracts/utils/Pausable.sol
+
+/**
+ * @dev Contract module which allows children to implement an emergency stop
+ * mechanism that can be triggered by an authorized account.
+ *
+ * This module is used through inheritance. It will make available the
+ * modifiers `whenNotPaused` and `whenPaused`, which can be applied to
+ * the functions of your contract. Note that they will not be pausable by
+ * simply including this module, only once the modifiers are put in place.
+ */
+abstract contract Pausable is Context {
+    /**
+     * @dev Emitted when the pause is triggered by `account`.
+     */
+    event Paused(address account);
+
+    /**
+     * @dev Emitted when the pause is lifted by `account`.
+     */
+    event Unpaused(address account);
+
+    bool private _paused;
+
+    /**
+     * @dev Initializes the contract in unpaused state.
+     */
+    constructor() {
+        _paused = false;
+    }
+
+    /**
+     * @dev Returns true if the contract is paused, and false otherwise.
+     */
+    function paused() public view virtual returns (bool) {
+        return _paused;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is not paused.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     */
+    modifier whenNotPaused() {
+        require(!paused(), "Pausable: paused");
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is paused.
+     *
+     * Requirements:
+     *
+     * - The contract must be paused.
+     */
+    modifier whenPaused() {
+        require(paused(), "Pausable: not paused");
+        _;
+    }
+
+    /**
+     * @dev Triggers stopped state.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     */
+    function _pause() internal virtual whenNotPaused {
+        _paused = true;
+        emit Paused(_msgSender());
+    }
+
+    /**
+     * @dev Returns to normal state.
+     *
+     * Requirements:
+     *
+     * - The contract must be paused.
+     */
+    function _unpause() internal virtual whenPaused {
+        _paused = false;
+        emit Unpaused(_msgSender());
+    }
+}
+
+// File: @openzeppelin/contracts/utils/ReentrancyGuard.sol
+
+/**
+ * @dev Contract module that helps prevent reentrant calls to a function.
+ *
+ * Inheriting from `ReentrancyGuard` will make the {nonReentrant} modifier
+ * available, which can be applied to functions to make sure there are no nested
+ * (reentrant) calls to them.
+ *
+ * Note that because there is a single `nonReentrant` guard, functions marked as
+ * `nonReentrant` may not call one another. This can be worked around by making
+ * those functions `private`, and then adding `external` `nonReentrant` entry
+ * points to them.
+ *
+ * TIP: If you would like to learn more about reentrancy and alternative ways
+ * to protect against it, check out our blog post
+ * https://blog.openzeppelin.com/reentrancy-after-istanbul/[Reentrancy After Istanbul].
+ */
+abstract contract ReentrancyGuard {
+    // Booleans are more expensive than uint256 or any type that takes up a full
+    // word because each write operation emits an extra SLOAD to first read the
+    // slot's contents, replace the bits taken up by the boolean, and then write
+    // back. This is the compiler's defense against contract upgrades and
+    // pointer aliasing, and it cannot be disabled.
+
+    // The values being non-zero value makes deployment a bit more expensive,
+    // but in exchange the refund on every call to nonReentrant will be lower in
+    // amount. Since refunds are capped to a percentage of the total
+    // transaction's gas, it is best to keep them low in cases like this one, to
+    // increase the likelihood of the full refund coming into effect.
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+
+    uint256 private _status;
+
+    constructor() {
+        _status = _NOT_ENTERED;
+    }
+
+    /**
+     * @dev Prevents a contract from calling itself, directly or indirectly.
+     * Calling a `nonReentrant` function from another `nonReentrant`
+     * function is not supported. It is possible to prevent this from happening
+     * by making the `nonReentrant` function external, and make it call a
+     * `private` function that does the actual work.
+     */
+    modifier nonReentrant() {
+        // On the first call to nonReentrant, _notEntered will be true
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+
+        // Any calls to nonReentrant after this point will fail
+        _status = _ENTERED;
+
+        _;
+
+        // By storing the original value once again, a refund is triggered (see
+        // https://eips.ethereum.org/EIPS/eip-2200)
+        _status = _NOT_ENTERED;
+    }
+}
+
+// File: @openzeppelin/contracts/token/ERC20/IERC20.sol
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
@@ -116,8 +334,6 @@ interface IERC20 {
 }
 
 // File: @openzeppelin/contracts/math/SafeMath.sol
-
-pragma solidity ^0.7.0;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -363,8 +579,6 @@ library SafeMath {
 }
 
 // File: @openzeppelin/contracts/token/ERC20/ERC20.sol
-
-pragma solidity ^0.7.0;
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -735,98 +949,7 @@ contract ERC20 is Context, IERC20 {
     ) internal virtual {}
 }
 
-// File: @openzeppelin/contracts/utils/Pausable.sol
-
-pragma solidity ^0.7.0;
-
-/**
- * @dev Contract module which allows children to implement an emergency stop
- * mechanism that can be triggered by an authorized account.
- *
- * This module is used through inheritance. It will make available the
- * modifiers `whenNotPaused` and `whenPaused`, which can be applied to
- * the functions of your contract. Note that they will not be pausable by
- * simply including this module, only once the modifiers are put in place.
- */
-abstract contract Pausable is Context {
-    /**
-     * @dev Emitted when the pause is triggered by `account`.
-     */
-    event Paused(address account);
-
-    /**
-     * @dev Emitted when the pause is lifted by `account`.
-     */
-    event Unpaused(address account);
-
-    bool private _paused;
-
-    /**
-     * @dev Initializes the contract in unpaused state.
-     */
-    constructor() {
-        _paused = false;
-    }
-
-    /**
-     * @dev Returns true if the contract is paused, and false otherwise.
-     */
-    function paused() public view virtual returns (bool) {
-        return _paused;
-    }
-
-    /**
-     * @dev Modifier to make a function callable only when the contract is not paused.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     */
-    modifier whenNotPaused() {
-        require(!paused(), "Pausable: paused");
-        _;
-    }
-
-    /**
-     * @dev Modifier to make a function callable only when the contract is paused.
-     *
-     * Requirements:
-     *
-     * - The contract must be paused.
-     */
-    modifier whenPaused() {
-        require(paused(), "Pausable: not paused");
-        _;
-    }
-
-    /**
-     * @dev Triggers stopped state.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     */
-    function _pause() internal virtual whenNotPaused {
-        _paused = true;
-        emit Paused(_msgSender());
-    }
-
-    /**
-     * @dev Returns to normal state.
-     *
-     * Requirements:
-     *
-     * - The contract must be paused.
-     */
-    function _unpause() internal virtual whenPaused {
-        _paused = false;
-        emit Unpaused(_msgSender());
-    }
-}
-
 // File: @openzeppelin/contracts/token/ERC20/ERC20Pausable.sol
-
-pragma solidity ^0.7.0;
 
 /**
  * @dev ERC20 token with pausable token transfers, minting and burning.
@@ -856,8 +979,6 @@ abstract contract ERC20Pausable is ERC20, Pausable {
 
 // File: contracts/BetToken.sol
 
-pragma solidity 0.7.0;
-
 /**
  * @title BetToken
  */
@@ -876,7 +997,6 @@ contract BetToken is ERC20Pausable {
     constructor(string memory _name, string memory _symbol)
         ERC20(_name, _symbol)
     {
-        _setupDecimals(8);
         predictionMarket = msg.sender;
     }
 
@@ -948,8 +1068,7 @@ contract BetToken is ERC20Pausable {
     }
 }
 
-// File: contracts/PredictionMarket.sol
-pragma solidity 0.7.0;
+// File: contracts/AggregatorV3Interface.sol
 
 interface AggregatorV3Interface {
     function decimals() external view returns (uint8);
@@ -984,13 +1103,17 @@ interface AggregatorV3Interface {
         );
 }
 
-contract PredictionMarket {
+// File: contracts/PredictionMarket.sol
+
+contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
     using SafeMath for uint256;
 
     AggregatorV3Interface internal priceFeed;
-
     uint256 public latestConditionIndex;
-    address payable public owner;
+
+    uint256 public fee;
+    uint256 public feeRate;
+    address operatorAddress;
 
     mapping(uint256 => ConditionInfo) public conditions;
 
@@ -1005,6 +1128,7 @@ contract PredictionMarket {
         address highBetToken;
         uint256 totalStakedAbove;
         uint256 totalStakedBelow;
+        uint256 totalEthClaimable;
     }
 
     event ConditionPrepared(
@@ -1015,7 +1139,6 @@ contract PredictionMarket {
         address lowBetTokenAddress,
         address highBetTokenAddress
     );
-
     event UserPrediction(
         uint256 indexed conditionIndex,
         address indexed userAddress,
@@ -1023,34 +1146,65 @@ contract PredictionMarket {
         uint8 prediction,
         uint256 timestamp
     );
-
     event UserClaimed(
         uint256 indexed conditionIndex,
         address indexed userAddress,
         uint256 indexed winningAmount
     );
-
     event ConditionSettled(
         uint256 indexed conditionIndex,
         int256 indexed settledPrice,
         uint256 timestamp
     );
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not Owner");
+    modifier onlyOperator() {
+        require(msg.sender == operatorAddress, "operator: wut?");
         _;
     }
 
-    constructor() {
-        owner = msg.sender;
+    function setOperator(address _operatorAddress) external onlyOwner {
+        require(_operatorAddress != address(0), "Cannot be zero address");
+        operatorAddress = _operatorAddress;
+    }
+
+    function setFee(uint256 _feeRate) external onlyOwner {
+        feeRate = _feeRate;
+    }
+
+    function execute(uint256 conditionIndex, uint256 interval)
+        external
+        payable
+        nonReentrant
+        onlyOperator
+    {
+        ConditionInfo storage condition = conditions[conditionIndex];
+        require(condition.oracle != address(0), "ERR_INVALID_CONDITION_INDEX");
+        require(interval >= 300, "ERR_SETTLEMENT_TIME_INTERVAL");
+
+        //settle and claim for previous index
+        claimFor(msg.sender, conditionIndex);
+
+        //prepare new condition
+        int256 triggerPrice = getPrice(condition.oracle);
+        uint256 newIndex =
+            prepareCondition(
+                condition.oracle,
+                block.timestamp + interval,
+                triggerPrice
+            );
+
+        //betOnConditionFor admin
+        uint256 amount0 = msg.value.div(2);
+
+        betOnConditionFor(msg.sender, newIndex, 0, amount0);
+        betOnConditionFor(msg.sender, newIndex, 1, msg.value.sub(amount0));
     }
 
     function prepareCondition(
         address _oracle,
         uint256 _settlementTime,
-        int256 _triggerPrice,
-        string memory _market
-    ) external onlyOwner {
+        int256 _triggerPrice
+    ) public whenNotPaused returns (uint256) {
         require(_oracle != address(0), "Can't be 0 address");
         require(
             _settlementTime > block.timestamp,
@@ -1059,25 +1213,23 @@ contract PredictionMarket {
         latestConditionIndex = latestConditionIndex.add(1);
         ConditionInfo storage conditionInfo = conditions[latestConditionIndex];
 
-        conditionInfo.market = _market;
+        conditionInfo.market = AggregatorV3Interface(_oracle).description();
         conditionInfo.oracle = _oracle;
         conditionInfo.settlementTime = _settlementTime;
         conditionInfo.triggerPrice = _triggerPrice;
         conditionInfo.isSettled = false;
-
         conditionInfo.lowBetToken = address(
             new BetToken(
                 "Low Bet Token",
-                string(abi.encodePacked("LBT-", _market))
+                string(abi.encodePacked("LBT-", conditionInfo.market))
             )
         );
         conditionInfo.highBetToken = address(
             new BetToken(
                 "High Bet Token",
-                string(abi.encodePacked("HBT-", _market))
+                string(abi.encodePacked("HBT-", conditionInfo.market))
             )
         );
-
         emit ConditionPrepared(
             latestConditionIndex,
             _oracle,
@@ -1086,6 +1238,8 @@ contract PredictionMarket {
             conditionInfo.lowBetToken,
             conditionInfo.highBetToken
         );
+
+        return latestConditionIndex;
     }
 
     function probabilityRatio(uint256 _conditionIndex)
@@ -1094,36 +1248,32 @@ contract PredictionMarket {
         returns (uint256 aboveProbabilityRatio, uint256 belowProbabilityRatio)
     {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
-
         if (conditionInfo.isSettled) {
             return (0, 0);
         }
-
         uint256 ethStakedForAbove =
             BetToken(conditionInfo.highBetToken).totalSupply();
-
         uint256 ethStakedForBelow =
             BetToken(conditionInfo.lowBetToken).totalSupply();
 
-        uint256 totalETHStaked = ethStakedForAbove.add(ethStakedForBelow);
+        uint256 totalEthStaked = ethStakedForAbove.add(ethStakedForBelow);
 
-        aboveProbabilityRatio = totalETHStaked > 0
-            ? ethStakedForAbove.mul(1e18).div(totalETHStaked)
+        aboveProbabilityRatio = totalEthStaked > 0
+            ? ethStakedForAbove.mul(1e18).div(totalEthStaked)
             : 0;
-        belowProbabilityRatio = totalETHStaked > 0
-            ? ethStakedForBelow.mul(1e18).div(totalETHStaked)
+        belowProbabilityRatio = totalEthStaked > 0
+            ? ethStakedForBelow.mul(1e18).div(totalEthStaked)
             : 0;
     }
 
     function userTotalETHStaked(uint256 _conditionIndex, address userAddress)
-        public
+        external
         view
         returns (uint256 totalEthStaked)
     {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
         uint256 ethStakedForAbove =
             BetToken(conditionInfo.highBetToken).balanceOf(userAddress);
-
         uint256 ethStakedForBelow =
             BetToken(conditionInfo.lowBetToken).balanceOf(userAddress);
 
@@ -1131,42 +1281,48 @@ contract PredictionMarket {
     }
 
     function betOnCondition(uint256 _conditionIndex, uint8 _prediction)
-        public
+        external
         payable
     {
+        //call betOncondition
+    }
+
+    function betOnConditionFor(
+        address _user,
+        uint256 _conditionIndex,
+        uint8 _prediction,
+        uint256 _amount
+    ) public payable whenNotPaused {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
+
+        require(_user != address(0), "ERR_INVALID_ADDRESS");
+
         require(conditionInfo.oracle != address(0), "Condition doesn't exists");
         require(
             block.timestamp < conditionInfo.settlementTime,
             "Cannot bet after Settlement Time"
         );
-        uint256 userETHStaked = msg.value;
+
+        require(msg.value >= _amount, "ERR_INVALID_AMOUNT");
+        uint256 userETHStaked = _amount;
         require(userETHStaked > 0 wei, "Bet cannot be 0");
         require((_prediction == 0) || (_prediction == 1), "Invalid Prediction"); //prediction = 0 (price will be below), if 1 (price will be above)
 
-        address userAddress = msg.sender;
-
         if (_prediction == 0) {
-            BetToken(conditionInfo.lowBetToken).mint(
-                userAddress,
-                userETHStaked
-            );
+            BetToken(conditionInfo.lowBetToken).mint(_user, userETHStaked);
         } else {
-            BetToken(conditionInfo.highBetToken).mint(
-                userAddress,
-                userETHStaked
-            );
+            BetToken(conditionInfo.highBetToken).mint(_user, userETHStaked);
         }
         emit UserPrediction(
             _conditionIndex,
-            userAddress,
+            _user,
             userETHStaked,
             _prediction,
             block.timestamp
         );
     }
 
-    function settleCondition(uint256 _conditionIndex) public {
+    function settleCondition(uint256 _conditionIndex) public whenNotPaused {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
         require(conditionInfo.oracle != address(0), "Condition doesn't exists");
         require(
@@ -1180,83 +1336,103 @@ contract PredictionMarket {
             .totalSupply();
         conditionInfo.totalStakedBelow = BetToken(conditionInfo.lowBetToken)
             .totalSupply();
-        priceFeed = AggregatorV3Interface(conditionInfo.oracle);
-        (, int256 latestPrice, , , ) = priceFeed.latestRoundData();
-        conditionInfo.settledPrice = latestPrice;
-        emit ConditionSettled(_conditionIndex, latestPrice, block.timestamp);
+
+        uint256 _fees = conditionInfo.totalEthClaimable.div(1000).mul(feeRate);
+
+        conditionInfo.totalEthClaimable = conditionInfo
+            .totalStakedAbove
+            .add(conditionInfo.totalStakedBelow)
+            .sub(_fees);
+
+        fee = fee.add(_fees);
+        conditionInfo.settledPrice = getPrice(conditionInfo.oracle);
+
+        emit ConditionSettled(
+            _conditionIndex,
+            conditionInfo.settledPrice,
+            block.timestamp
+        );
+    }
+
+    function getPrice(address oracle) internal returns (int256 latestPrice) {
+        priceFeed = AggregatorV3Interface(oracle);
+        (, latestPrice, , , ) = priceFeed.latestRoundData();
     }
 
     function claim(uint256 _conditionIndex) public {
+        //require for non zero address
+        //call claim with msg.sender as _for
+    }
+
+    function claimFor(address payable _userAddress, uint256 _conditionIndex)
+        public
+        whenNotPaused
+        nonReentrant
+    {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
-        address payable userAddress = msg.sender;
+
         BetToken lowBetToken = BetToken(conditionInfo.lowBetToken);
         BetToken highBetToken = BetToken(conditionInfo.highBetToken);
-
         if (!conditionInfo.isSettled) {
             settleCondition(_conditionIndex);
         }
 
-        uint256 platformFees; // remaining 10% will be treated as platformFees
-        uint256 totalWinnerRedeemable; //Amount Redeemable including winnerRedeemable & user initial Stake
-
-        if (conditionInfo.settledPrice >= conditionInfo.triggerPrice) {
+        uint256 totalWinnerRedeemable;
+        //Amount Redeemable including winnerRedeemable & user initial Stake
+        if (conditionInfo.settledPrice > conditionInfo.triggerPrice) {
             //Users who predicted above price wins
-            uint256 userStake = highBetToken.balanceOf(userAddress);
-
-            highBetToken.burnAll(userAddress);
-            lowBetToken.burnAll(userAddress);
+            uint256 userStake = highBetToken.balanceOf(_userAddress);
 
             if (userStake == 0) {
                 return;
             }
-
-            (totalWinnerRedeemable, platformFees) = getClaimAmount(
+            totalWinnerRedeemable = getClaimAmount(
                 conditionInfo.totalStakedBelow,
                 conditionInfo.totalStakedAbove,
                 userStake
             );
-
-            owner.transfer(platformFees);
-            userAddress.transfer(totalWinnerRedeemable);
         } else if (conditionInfo.settledPrice < conditionInfo.triggerPrice) {
             //Users who predicted below price wins
-            uint256 userStake = lowBetToken.balanceOf(userAddress);
-
-            highBetToken.burnAll(userAddress);
-            lowBetToken.burnAll(userAddress);
+            uint256 userStake = lowBetToken.balanceOf(_userAddress);
 
             if (userStake == 0) {
                 return;
             }
-
-            (totalWinnerRedeemable, platformFees) = getClaimAmount(
+            totalWinnerRedeemable = getClaimAmount(
                 conditionInfo.totalStakedAbove,
                 conditionInfo.totalStakedBelow,
                 userStake
             );
-
-            owner.transfer(platformFees);
-            userAddress.transfer(totalWinnerRedeemable);
+        } else {
+            fee = fee.add(conditionInfo.totalEthClaimable);
+            totalWinnerRedeemable = 0;
         }
-        emit UserClaimed(_conditionIndex, userAddress, totalWinnerRedeemable);
+
+        highBetToken.burnAll(_userAddress);
+        lowBetToken.burnAll(_userAddress);
+
+        _userAddress.transfer(totalWinnerRedeemable);
+
+        emit UserClaimed(_conditionIndex, _userAddress, totalWinnerRedeemable);
     }
 
-    //totalPayout - Payout to be distributed among winners(total eth staked by loosing side)
-    //winnersTotalETHStaked - total eth staked by the winning side
+    function claimFees() external whenNotPaused onlyOwner {
+        if (fee != 0) {
+            fee = 0;
+            address _to = owner();
+            payable(_to).transfer(fee);
+        }
+    }
+
     function getClaimAmount(
         uint256 totalPayout,
         uint256 winnersTotalETHStaked,
         uint256 userStake
-    )
-        internal
-        pure
-        returns (uint256 totalWinnerRedeemable, uint256 platformFees)
-    {
+    ) internal view returns (uint256 totalWinnerRedeemable) {
         uint256 userProportion = userStake.mul(1e18).div(winnersTotalETHStaked);
-
         uint256 winnerPayout = totalPayout.mul(userProportion).div(1e18);
-        uint256 winnerRedeemable = (winnerPayout.div(1000)).mul(900);
-        platformFees = (winnerPayout.div(1000)).mul(100);
+
+        uint256 winnerRedeemable = (winnerPayout.div(1000)).mul(1000 - feeRate);
         totalWinnerRedeemable = winnerRedeemable.add(userStake);
     }
 
