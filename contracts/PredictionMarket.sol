@@ -10,8 +10,6 @@ import "./AggregatorV3Interface.sol";
 
 contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
     using SafeMath for uint256;
-
-    AggregatorV3Interface internal priceFeed;
     uint256 public latestConditionIndex;
 
     uint256 public fee;
@@ -59,19 +57,27 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
         int256 indexed settledPrice,
         uint256 timestamp
     );
+    event OperatorSet(address operatorAddress);
+    event FeeSet(uint256 feeRate);
+
+    constructor() {
+        feeRate = 10;
+    }
 
     modifier onlyOperator() {
-        require(msg.sender == operatorAddress, "operator: wut?");
+        require(msg.sender == operatorAddress, "ERR_INVALID_OPERATOR");
         _;
     }
 
     function setOperator(address _operatorAddress) external onlyOwner {
-        require(_operatorAddress != address(0), "Cannot be zero address");
+        require(_operatorAddress != address(0), "ERR_INVALID_OPERATOR_ADDRESS");
         operatorAddress = _operatorAddress;
+        emit OperatorSet(operatorAddress);
     }
 
     function setFee(uint256 _feeRate) external onlyOwner {
         feeRate = _feeRate;
+        emit FeeSet(feeRate);
     }
 
     function execute(uint256 conditionIndex, uint256 interval)
@@ -108,15 +114,15 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
         uint256 _settlementTime,
         int256 _triggerPrice
     ) public whenNotPaused returns (uint256) {
-        require(_oracle != address(0), "Can't be 0 address");
+        require(_oracle != address(0), "ERR_INVALID_ORACLE_ADDRESS");
         require(
             _settlementTime > block.timestamp,
-            "Settlement Time should be greater than Trx Confirmed Time"
+            "ERR_INVALID_SETTLEMENT_TIME"
         );
         latestConditionIndex = latestConditionIndex.add(1);
         ConditionInfo storage conditionInfo = conditions[latestConditionIndex];
 
-        conditionInfo.market = AggregatorV3Interface(_oracle).description();
+        conditionInfo.market = IAggregatorV3Interface(_oracle).description();
         conditionInfo.oracle = _oracle;
         conditionInfo.settlementTime = _settlementTime;
         conditionInfo.triggerPrice = _triggerPrice;
@@ -188,6 +194,7 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
         payable
     {
         //call betOncondition
+        betOnConditionFor(msg.sender, _conditionIndex, _prediction, msg.value);
     }
 
     function betOnConditionFor(
@@ -200,16 +207,22 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
 
         require(_user != address(0), "ERR_INVALID_ADDRESS");
 
-        require(conditionInfo.oracle != address(0), "Condition doesn't exists");
+        require(
+            conditionInfo.oracle != address(0),
+            "ERR_INVALID_ORACLE_ADDRESS"
+        );
         require(
             block.timestamp < conditionInfo.settlementTime,
-            "Cannot bet after Settlement Time"
+            "ERR_INVALID_SETTLEMENT_TIME"
         );
 
         require(msg.value >= _amount, "ERR_INVALID_AMOUNT");
         uint256 userETHStaked = _amount;
-        require(userETHStaked > 0 wei, "Bet cannot be 0");
-        require((_prediction == 0) || (_prediction == 1), "Invalid Prediction"); //prediction = 0 (price will be below), if 1 (price will be above)
+        require(userETHStaked > 0 wei, "ERR_INVALID_BET_AMOUNT");
+        require(
+            (_prediction == 0) || (_prediction == 1),
+            "ERR_INVALID_PREDICTION"
+        ); //prediction = 0 (price will be below), if 1 (price will be above)
 
         if (_prediction == 0) {
             BetToken(conditionInfo.lowBetToken).mint(_user, userETHStaked);
@@ -227,12 +240,15 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
 
     function settleCondition(uint256 _conditionIndex) public whenNotPaused {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
-        require(conditionInfo.oracle != address(0), "Condition doesn't exists");
+        require(
+            conditionInfo.oracle != address(0),
+            "ERR_INVALID_ORACLE_ADDRESS"
+        );
         require(
             block.timestamp >= conditionInfo.settlementTime,
-            "Not before Settlement Time"
+            "ERR_INVALID_SETTLEMENT_TIME"
         );
-        require(!conditionInfo.isSettled, "Condition settled already");
+        require(!conditionInfo.isSettled, "ERR_CONDITION_ALREADY_SETTLED");
 
         conditionInfo.isSettled = true;
         conditionInfo.totalStakedAbove = BetToken(conditionInfo.highBetToken)
@@ -257,14 +273,24 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
         );
     }
 
-    function getPrice(address oracle) internal returns (int256 latestPrice) {
-        priceFeed = AggregatorV3Interface(oracle);
-        (, latestPrice, , , ) = priceFeed.latestRoundData();
+    function getPrice(address oracle)
+        internal
+        view
+        returns (int256 latestPrice)
+    {
+        (, latestPrice, , , ) = IAggregatorV3Interface(oracle)
+            .latestRoundData();
     }
 
     function claim(uint256 _conditionIndex) public {
         //require for non zero address
+        ConditionInfo storage conditionInfo = conditions[_conditionIndex];
+        require(
+            conditionInfo.oracle != address(0),
+            "ERR_INVALID_ORACLE_ADDRESS"
+        );
         //call claim with msg.sender as _for
+        claimFor(msg.sender, _conditionIndex);
     }
 
     function claimFor(address payable _userAddress, uint256 _conditionIndex)

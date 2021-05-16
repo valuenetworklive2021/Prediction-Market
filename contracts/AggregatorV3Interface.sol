@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.7.0;
 
-interface AggregatorV3Interface {
+interface IAggregatorV3Interface {
     function decimals() external view returns (uint8);
 
     function description() external view returns (string memory);
