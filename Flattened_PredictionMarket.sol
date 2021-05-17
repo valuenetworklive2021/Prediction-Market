@@ -1201,7 +1201,7 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
         uint256 newIndex =
             prepareCondition(
                 oracle,
-                block.timestamp + interval,
+                interval,
                 triggerPrice,
                 false
             );
