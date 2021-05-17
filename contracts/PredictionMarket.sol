@@ -120,13 +120,15 @@ contract PredictionMarket is Ownable, Pausable, ReentrancyGuard {
     ) public whenNotPaused returns (uint256) {
         require(_oracle != address(0), "ERR_INVALID_ORACLE_ADDRESS");
         require(_settlementTimePeriod >= 300, "ERR_INVALID_SETTLEMENT_TIME");
+
+        uint256 multiplier = 10**(IAggregatorV3Interface(_oracle).decimals());
         latestConditionIndex = latestConditionIndex.add(1);
         ConditionInfo storage conditionInfo = conditions[latestConditionIndex];
 
         conditionInfo.market = IAggregatorV3Interface(_oracle).description();
         conditionInfo.oracle = _oracle;
         conditionInfo.settlementTime = _settlementTimePeriod + block.timestamp;
-        conditionInfo.triggerPrice = _triggerPrice;
+        conditionInfo.triggerPrice = _triggerPrice * int256(multiplier);
         conditionInfo.isSettled = false;
         conditionInfo.lowBetToken = address(
             new BetToken(
