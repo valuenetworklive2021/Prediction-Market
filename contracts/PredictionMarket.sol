@@ -1,18 +1,13 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.0;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "./BetToken.sol";
 import "./AggregatorV3Interface.sol";
 
-contract PredictionMarket is
-    ReentrancyGuard,
-    Initializable,
-    OwnableUpgradeable
-{
+contract PredictionMarket is Initializable, OwnableUpgradeable {
     uint256 public latestConditionIndex;
     uint256 public fee;
     uint256 public adminFeeRate;
@@ -21,6 +16,10 @@ contract PredictionMarket is
 
     address public operatorAddress;
     address public ethUsdOracleAddress;
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+
+    uint256 private _status;
 
     mapping(uint256 => ConditionInfo) public conditions;
 
@@ -41,8 +40,6 @@ contract PredictionMarket is
         uint256 totalStakedBelow;
         uint256 totalEthClaimable;
         address conditionOwner;
-        uint256 ownerFees;
-        uint256 betEndTime;
     }
 
     event ConditionPrepared(
@@ -50,7 +47,6 @@ contract PredictionMarket is
         uint256 indexed conditionIndex,
         address indexed oracle,
         uint256 indexed settlementTime,
-        uint256 betEndTime,
         int256 triggerPrice,
         address lowBetTokenAddress,
         address highBetTokenAddress
@@ -80,80 +76,52 @@ contract PredictionMarket is
     event SetMarketExpirationFee(uint256 adminFeeRate, uint256 ownerFeeRate);
     event SetMarketCreationFee(uint256 feeRate);
     event UpdateEthUsdOracleAddress(address oracle);
-    /**
-     * @dev Emitted when the pause is triggered by `account`.
-     */
     event Paused(address account);
-
-    /**
-     * @dev Emitted when the pause is lifted by `account`.
-     */
     event Unpaused(address account);
 
-    /**
-     * @dev Returns true if the contract is paused, and false otherwise.
-     */
-    function paused() public view virtual returns (bool) {
-        return _paused;
+    modifier onlyOperator() {
+        require(msg.sender == operatorAddress, "ERR_INVALID_OPERATOR");
+        _;
     }
 
-    /**
-     * @dev Modifier to make a function callable only when the contract is not paused.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     */
     modifier whenNotPaused() {
         require(!paused(), "Pausable: paused");
         _;
     }
 
-    /**
-     * @dev Modifier to make a function callable only when the contract is paused.
-     *
-     * Requirements:
-     *
-     * - The contract must be paused.
-     */
     modifier whenPaused() {
         require(paused(), "Pausable: not paused");
         _;
     }
 
-    /**
-     * @dev Triggers stopped state.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     */
-    function _pause() internal whenNotPaused {
-        _paused = true;
-        emit Paused(_msgSender());
+    modifier whenMarketActive(uint256 _conditionIndex) {
+        uint256 betEndTime = (conditions[_conditionIndex].settlementTime * 90) /
+            100;
+        require(block.timestamp <= betEndTime, "ERR_INVALID_SETTLEMENT_TIME");
+
+        _;
+    }
+
+    modifier nonReentrant() {
+        // On the first call to nonReentrant, _notEntered will be true
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+
+        // Any calls to nonReentrant after this point will fail
+        _status = _ENTERED;
+
+        _;
+
+        // By storing the original value once again, a refund is triggered (see
+        // https://eips.ethereum.org/EIPS/eip-2200)
+        _status = _NOT_ENTERED;
     }
 
     /**
-     * @dev Returns to normal state.
-     *
-     * Requirements:
-     *
-     * - The contract must be paused.
-     */
-    function _unpause() internal whenPaused {
-        _paused = false;
-        emit Unpaused(_msgSender());
-    }
-
-    /**
-     * @notice Construct a new Bridge Factory
+     * @notice Construct a new Prediction Market contract
      * @param _ethUsdOracleAddress The address of ETH-USD oracle.
      */
     // solhint-disable-next-line
-    function __PredictionMarket_init(address _ethUsdOracleAddress)
-        external
-        initializer
-    {
+    function initialize(address _ethUsdOracleAddress) external initializer {
         __Ownable_init();
         __PredictionMarket_init_unchained(_ethUsdOracleAddress);
     }
@@ -176,11 +144,7 @@ contract PredictionMarket is
 
         operatorAddress = msg.sender;
         _paused = false;
-    }
-
-    modifier onlyOperator() {
-        require(msg.sender == operatorAddress, "ERR_INVALID_OPERATOR");
-        _;
+        _status = _NOT_ENTERED;
     }
 
     function setOperator(address _operatorAddress) external onlyOwner {
@@ -189,7 +153,7 @@ contract PredictionMarket is
         emit SetOperator(operatorAddress);
     }
 
-    function setethUsdOracleAddress(address _ethUsdOracleAddress)
+    function setEthUsdOracleAddress(address _ethUsdOracleAddress)
         external
         onlyOwner
     {
@@ -239,6 +203,29 @@ contract PredictionMarket is
 
         autoGeneratedMarkets[oracle][interval] = newIndex;
         emit NewMarketGenerated(newIndex, oracle);
+    }
+
+    function paused() public view returns (bool) {
+        return _paused;
+    }
+
+    function _pause() internal whenNotPaused {
+        _paused = true;
+        emit Paused(_msgSender());
+    }
+
+    function _unpause() internal whenPaused {
+        _paused = false;
+        emit Unpaused(_msgSender());
+    }
+
+    function togglePause(bool pause) external {
+        require(
+            msg.sender == operatorAddress || msg.sender == owner(),
+            "ERR_INVALID_ADDRESS_ACCESS"
+        );
+        if (pause) _pause();
+        else _unpause();
     }
 
     function safeTransferETH(address to, uint256 value) internal {
@@ -294,7 +281,6 @@ contract PredictionMarket is
         conditionInfo.market = IAggregatorV3Interface(_oracle).description();
         conditionInfo.oracle = _oracle;
         conditionInfo.settlementTime = _settlementTimePeriod + block.timestamp;
-        conditionInfo.betEndTime = (conditionInfo.settlementTime * 90) / 100;
         conditionInfo.triggerPrice = _triggerPrice;
         conditionInfo.isSettled = false;
         conditionInfo.lowBetToken = address(
@@ -326,7 +312,6 @@ contract PredictionMarket is
             latestConditionIndex,
             _oracle,
             conditionInfo.settlementTime,
-            conditionInfo.betEndTime,
             _triggerPrice,
             conditionInfo.lowBetToken,
             conditionInfo.highBetToken
@@ -386,7 +371,13 @@ contract PredictionMarket is
         uint256 _conditionIndex,
         uint8 _prediction,
         uint256 _amount
-    ) public payable whenNotPaused nonReentrant {
+    )
+        public
+        payable
+        whenNotPaused
+        nonReentrant
+        whenMarketActive(_conditionIndex)
+    {
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
 
         require(_user != address(0), "ERR_INVALID_ADDRESS");
@@ -394,10 +385,6 @@ contract PredictionMarket is
         require(
             conditionInfo.oracle != address(0),
             "ERR_INVALID_ORACLE_ADDRESS"
-        );
-        require(
-            block.timestamp <= conditionInfo.betEndTime,
-            "ERR_INVALID_SETTLEMENT_TIME"
         );
 
         require(msg.value >= _amount && _amount != 0, "ERR_INVALID_AMOUNT");
@@ -451,10 +438,10 @@ contract PredictionMarket is
         uint256 total = conditionInfo.totalStakedAbove +
             conditionInfo.totalStakedBelow;
 
-        (
-            conditionInfo.totalEthClaimable,
-            conditionInfo.ownerFees
-        ) = _transferFees(total, conditionInfo.conditionOwner);
+        conditionInfo.totalEthClaimable = _transferFees(
+            total,
+            conditionInfo.conditionOwner
+        );
 
         conditionInfo.settledPrice = getPrice(conditionInfo.oracle);
 
@@ -467,12 +454,12 @@ contract PredictionMarket is
 
     function _transferFees(uint256 totalAmount, address conditionOwner)
         internal
-        returns (uint256 afterFeeAmount, uint256 ownerFees)
+        returns (uint256 afterFeeAmount)
     {
         uint256 _fees = (totalAmount * (adminFeeRate + ownerFeeRate)) / (1000);
         afterFeeAmount = totalAmount - (_fees);
 
-        ownerFees = (_fees * (ownerFeeRate)) / 1000;
+        uint256 ownerFees = (_fees * (ownerFeeRate)) / 1000;
         safeTransferETH(owner(), _fees - (ownerFees));
         safeTransferETH(conditionOwner, ownerFees);
     }
@@ -506,10 +493,9 @@ contract PredictionMarket is
                 return;
             }
             totalWinnerRedeemable = getClaimAmount(
-                conditionInfo.totalStakedBelow,
+                conditionInfo.totalEthClaimable,
                 conditionInfo.totalStakedAbove,
-                userStake,
-                conditionInfo.ownerFees
+                userStake
             );
         } else if (conditionInfo.settledPrice < conditionInfo.triggerPrice) {
             //Users who predicted below price wins
@@ -519,10 +505,9 @@ contract PredictionMarket is
                 return;
             }
             totalWinnerRedeemable = getClaimAmount(
-                conditionInfo.totalStakedAbove,
+                conditionInfo.totalEthClaimable,
                 conditionInfo.totalStakedBelow,
-                userStake,
-                conditionInfo.ownerFees
+                userStake
             );
         } else {
             safeTransferETH(
@@ -530,17 +515,18 @@ contract PredictionMarket is
                 conditionInfo.totalEthClaimable
             );
             totalWinnerRedeemable = 0;
+            conditionInfo.totalEthClaimable = 0;
         }
 
         highBetToken.burnAll(_userAddress);
         lowBetToken.burnAll(_userAddress);
 
-        conditionInfo.totalEthClaimable =
-            conditionInfo.totalEthClaimable -
-            (totalWinnerRedeemable);
-
-        if (totalWinnerRedeemable > 0)
+        if (totalWinnerRedeemable > 0) {
             _userAddress.transfer(totalWinnerRedeemable);
+            conditionInfo.totalEthClaimable =
+                conditionInfo.totalEthClaimable -
+                (totalWinnerRedeemable);
+        }
 
         emit UserClaimed(_conditionIndex, _userAddress, totalWinnerRedeemable);
     }
@@ -548,14 +534,11 @@ contract PredictionMarket is
     function getClaimAmount(
         uint256 totalPayout,
         uint256 winnersTotalETHStaked,
-        uint256 userStake,
-        uint256 ownerFees
+        uint256 userStake
     ) internal pure returns (uint256 totalWinnerRedeemable) {
-        uint256 userProportion = (userStake * (1e18)) / (winnersTotalETHStaked);
-        uint256 winnerPayout = ((totalPayout - (ownerFees)) *
-            (userProportion)) / (1e18);
-
-        totalWinnerRedeemable = winnerPayout + userStake;
+        totalWinnerRedeemable =
+            (totalPayout * userStake) /
+            winnersTotalETHStaked;
     }
 
     function getBalance(uint256 _conditionIndex, address _user)
