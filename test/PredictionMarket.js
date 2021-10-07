@@ -10,7 +10,10 @@ describe("PredictionMarket", function () {
       "PredictionMarket"
     );
 
-    const instance = await upgrades.deployProxy(PredictionMarket, [""]);
+    const instance = await upgrades.deployProxy(PredictionMarket, [
+      "0x0000000000000000000000000000000000000001",
+    ]);
+
     const upgraded = await upgrades.upgradeProxy(
       instance.address,
       PredictionMarketV2

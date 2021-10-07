@@ -18,8 +18,22 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.0",
+  solidity: {
+    compilers: [
+      {
+        evmVersion: "istanbul",
+        version: "0.8.0",
+        optimizer: {
+          enabled: true,
+          runs: 200,
+        },
+      },
+    ],
+  },
   networks: {
+    hardhat: {
+      allowUnlimitedContractSize: true,
+    },
     ropsten: {
       url: process.env.ROPSTEN_URL || "",
       accounts:
