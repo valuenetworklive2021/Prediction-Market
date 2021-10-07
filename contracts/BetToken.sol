@@ -1,12 +1,12 @@
 //SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.0;
+pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /**
  * @title BetToken
  */
-contract BetToken is ERC20Pausable {
+contract BetToken is ERC20 {
     uint256 public totalHolders;
     address public predictionMarket;
 
@@ -21,7 +21,6 @@ contract BetToken is ERC20Pausable {
     constructor(string memory _name, string memory _symbol)
         ERC20(_name, _symbol)
     {
-        // _setupDecimals(8);
         predictionMarket = msg.sender;
     }
 
@@ -38,11 +37,7 @@ contract BetToken is ERC20Pausable {
      * @param _to address The address of beneficiary.
      * @param _value uint256 The amount of tokens to be minted.
      */
-    function mint(address _to, uint256 _value)
-        public
-        onlyPredictionMarket
-        whenNotPaused
-    {
+    function mint(address _to, uint256 _value) public onlyPredictionMarket {
         _mint(_to, _value);
         if (balanceOf(_to) == _value) totalHolders++;
         emit Mint(_to, _value);
@@ -53,17 +48,13 @@ contract BetToken is ERC20Pausable {
      * @param _from address The address of beneficent.
      * @param _value uint256 The amount of tokens to be burned.
      */
-    function burn(address _from, uint256 _value)
-        public
-        onlyPredictionMarket
-        whenNotPaused
-    {
+    function burn(address _from, uint256 _value) public onlyPredictionMarket {
         _burn(_from, _value);
         if (balanceOf(_from) == 0) totalHolders--;
         emit Burn(_from, _value);
     }
 
-    function burnAll(address _from) public onlyPredictionMarket whenNotPaused {
+    function burnAll(address _from) public onlyPredictionMarket {
         uint256 _value = balanceOf(_from);
         if (_value == 0) return;
         totalHolders--;

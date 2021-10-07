@@ -2,7 +2,7 @@
 // File @openzeppelin/contracts/token/ERC20/IERC20.sol@v4.3.2
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.9;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
@@ -93,8 +93,6 @@ interface IERC20 {
 
 // File @openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol@v4.3.2
 
-pragma solidity ^0.8.0;
-
 /**
  * @dev Interface for the optional metadata functions from the ERC20 standard.
  *
@@ -119,8 +117,6 @@ interface IERC20Metadata is IERC20 {
 
 // File @openzeppelin/contracts/utils/Context.sol@v4.3.2
 
-pragma solidity ^0.8.0;
-
 /**
  * @dev Provides information about the current execution context, including the
  * sender of the transaction and its data. While these are generally available
@@ -142,8 +138,6 @@ abstract contract Context {
 }
 
 // File @openzeppelin/contracts/token/ERC20/ERC20.sol@v4.3.2
-
-pragma solidity ^0.8.0;
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -536,133 +530,12 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
     ) internal virtual {}
 }
 
-// File @openzeppelin/contracts/security/Pausable.sol@v4.3.2
-
-pragma solidity ^0.8.0;
-
-/**
- * @dev Contract module which allows children to implement an emergency stop
- * mechanism that can be triggered by an authorized account.
- *
- * This module is used through inheritance. It will make available the
- * modifiers `whenNotPaused` and `whenPaused`, which can be applied to
- * the functions of your contract. Note that they will not be pausable by
- * simply including this module, only once the modifiers are put in place.
- */
-abstract contract Pausable is Context {
-    /**
-     * @dev Emitted when the pause is triggered by `account`.
-     */
-    event Paused(address account);
-
-    /**
-     * @dev Emitted when the pause is lifted by `account`.
-     */
-    event Unpaused(address account);
-
-    bool private _paused;
-
-    /**
-     * @dev Initializes the contract in unpaused state.
-     */
-    constructor() {
-        _paused = false;
-    }
-
-    /**
-     * @dev Returns true if the contract is paused, and false otherwise.
-     */
-    function paused() public view virtual returns (bool) {
-        return _paused;
-    }
-
-    /**
-     * @dev Modifier to make a function callable only when the contract is not paused.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     */
-    modifier whenNotPaused() {
-        require(!paused(), "Pausable: paused");
-        _;
-    }
-
-    /**
-     * @dev Modifier to make a function callable only when the contract is paused.
-     *
-     * Requirements:
-     *
-     * - The contract must be paused.
-     */
-    modifier whenPaused() {
-        require(paused(), "Pausable: not paused");
-        _;
-    }
-
-    /**
-     * @dev Triggers stopped state.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     */
-    function _pause() internal virtual whenNotPaused {
-        _paused = true;
-        emit Paused(_msgSender());
-    }
-
-    /**
-     * @dev Returns to normal state.
-     *
-     * Requirements:
-     *
-     * - The contract must be paused.
-     */
-    function _unpause() internal virtual whenPaused {
-        _paused = false;
-        emit Unpaused(_msgSender());
-    }
-}
-
-// File @openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol@v4.3.2
-
-pragma solidity ^0.8.0;
-
-/**
- * @dev ERC20 token with pausable token transfers, minting and burning.
- *
- * Useful for scenarios such as preventing trades until the end of an evaluation
- * period, or having an emergency switch for freezing all token transfers in the
- * event of a large bug.
- */
-abstract contract ERC20Pausable is ERC20, Pausable {
-    /**
-     * @dev See {ERC20-_beforeTokenTransfer}.
-     *
-     * Requirements:
-     *
-     * - the contract must not be paused.
-     */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual override {
-        super._beforeTokenTransfer(from, to, amount);
-
-        require(!paused(), "ERC20Pausable: token transfer while paused");
-    }
-}
-
 // File contracts/BetToken.sol
-
-pragma solidity 0.8.0;
 
 /**
  * @title BetToken
  */
-contract BetToken is ERC20Pausable {
+contract BetToken is ERC20 {
     uint256 public totalHolders;
     address public predictionMarket;
 
@@ -677,7 +550,6 @@ contract BetToken is ERC20Pausable {
     constructor(string memory _name, string memory _symbol)
         ERC20(_name, _symbol)
     {
-        // _setupDecimals(8);
         predictionMarket = msg.sender;
     }
 
@@ -694,11 +566,7 @@ contract BetToken is ERC20Pausable {
      * @param _to address The address of beneficiary.
      * @param _value uint256 The amount of tokens to be minted.
      */
-    function mint(address _to, uint256 _value)
-        public
-        onlyPredictionMarket
-        whenNotPaused
-    {
+    function mint(address _to, uint256 _value) public onlyPredictionMarket {
         _mint(_to, _value);
         if (balanceOf(_to) == _value) totalHolders++;
         emit Mint(_to, _value);
@@ -709,17 +577,13 @@ contract BetToken is ERC20Pausable {
      * @param _from address The address of beneficent.
      * @param _value uint256 The amount of tokens to be burned.
      */
-    function burn(address _from, uint256 _value)
-        public
-        onlyPredictionMarket
-        whenNotPaused
-    {
+    function burn(address _from, uint256 _value) public onlyPredictionMarket {
         _burn(_from, _value);
         if (balanceOf(_from) == 0) totalHolders--;
         emit Burn(_from, _value);
     }
 
-    function burnAll(address _from) public onlyPredictionMarket whenNotPaused {
+    function burnAll(address _from) public onlyPredictionMarket {
         uint256 _value = balanceOf(_from);
         if (_value == 0) return;
         totalHolders--;
@@ -752,8 +616,6 @@ contract BetToken is ERC20Pausable {
 }
 
 // File contracts/AggregatorV3Interface.sol
-
-pragma solidity 0.8.0;
 
 interface IAggregatorV3Interface {
     function decimals() external view returns (uint8);
@@ -791,8 +653,6 @@ interface IAggregatorV3Interface {
 // File contracts/mock/Oracle.sol
 
 // File: @chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol
-
-pragma solidity 0.8.0;
 
 // File: contracts/PriceOracle.sol
 contract PriceOracle is IAggregatorV3Interface {
@@ -835,8 +695,6 @@ contract PriceOracle is IAggregatorV3Interface {
 }
 
 // File @openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol@v4.3.2
-
-pragma solidity ^0.8.0;
 
 /**
  * @dev This is a base contract to aid in writing upgradeable contracts, or any kind of contract that will be deployed
@@ -886,8 +744,6 @@ abstract contract Initializable {
 
 // File @openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol@v4.3.2
 
-pragma solidity ^0.8.0;
-
 /**
  * @dev Provides information about the current execution context, including the
  * sender of the transaction and its data. While these are generally available
@@ -917,8 +773,6 @@ abstract contract ContextUpgradeable is Initializable {
 }
 
 // File @openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol@v4.3.2
-
-pragma solidity ^0.8.0;
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -1001,9 +855,7 @@ abstract contract OwnableUpgradeable is Initializable, ContextUpgradeable {
 
 // File contracts/PredictionMarket.sol
 
-pragma solidity 0.8.0;
-
-contract PredictionMarket is Initializable, OwnableUpgradeable {
+contract PredictionMarket is OwnableUpgradeable {
     uint256 public latestConditionIndex;
     uint256 public fee;
     uint256 public adminFeeRate;
@@ -1012,8 +864,6 @@ contract PredictionMarket is Initializable, OwnableUpgradeable {
 
     address public operatorAddress;
     address public ethUsdOracleAddress;
-    uint256 private constant _NOT_ENTERED = 1;
-    uint256 private constant _ENTERED = 2;
 
     uint256 private _status;
 
@@ -1081,12 +931,12 @@ contract PredictionMarket is Initializable, OwnableUpgradeable {
     }
 
     modifier whenNotPaused() {
-        require(!paused(), "Pausable: paused");
+        require(!paused(), "PAUSED");
         _;
     }
 
     modifier whenPaused() {
-        require(paused(), "Pausable: not paused");
+        require(paused(), "NOT_PAUSED");
         _;
     }
 
@@ -1100,16 +950,10 @@ contract PredictionMarket is Initializable, OwnableUpgradeable {
 
     modifier nonReentrant() {
         // On the first call to nonReentrant, _notEntered will be true
-        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
-
-        // Any calls to nonReentrant after this point will fail
-        _status = _ENTERED;
-
+        require(_status != 2, "REENTRANT_CALL");
+        _status = 2;
         _;
-
-        // By storing the original value once again, a refund is triggered (see
-        // https://eips.ethereum.org/EIPS/eip-2200)
-        _status = _NOT_ENTERED;
+        _status = 1;
     }
 
     /**
@@ -1140,7 +984,7 @@ contract PredictionMarket is Initializable, OwnableUpgradeable {
 
         operatorAddress = msg.sender;
         _paused = false;
-        _status = _NOT_ENTERED;
+        _status = 1;
     }
 
     function setOperator(address _operatorAddress) external onlyOwner {
@@ -1183,7 +1027,6 @@ contract PredictionMarket is Initializable, OwnableUpgradeable {
         require(oracle != address(0), "ERR_INVALID_CONDITION_INDEX");
 
         uint256 index = autoGeneratedMarkets[oracle][interval];
-        require(index != 0, "ERR_INITIALIZE_MARKET");
 
         //settle and claim for previous index
         claimFor(payable(msg.sender), index);
@@ -1229,10 +1072,7 @@ contract PredictionMarket is Initializable, OwnableUpgradeable {
         (bool success, ) = payable(to).call{value: value}(new bytes(0));
 
         // solhint-disable-next-line
-        require(
-            success,
-            "TransferHelper::safeTransferETH: ETH transfer failed"
-        );
+        require(success, "ETH_TRANSFER_FAILED");
     }
 
     function getMarketCreationFee() public view returns (uint256 toDeduct) {
