@@ -5,6 +5,7 @@ require("@nomiclabs/hardhat-waffle");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
 require("@openzeppelin/hardhat-upgrades");
+require("hardhat-contract-sizer");
 
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
   const accounts = await hre.ethers.getSigners();
@@ -22,7 +23,7 @@ module.exports = {
     compilers: [
       {
         evmVersion: "istanbul",
-        version: "0.8.0",
+        version: "0.8.9",
         optimizer: {
           enabled: true,
           runs: 200,
@@ -34,8 +35,8 @@ module.exports = {
     hardhat: {
       allowUnlimitedContractSize: true,
     },
-    ropsten: {
-      url: process.env.ROPSTEN_URL || "",
+    rinkeby: {
+      url: process.env.RINKEBY_URL || "",
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
@@ -46,5 +47,11 @@ module.exports = {
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
+  },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: true,
+    strict: false,
   },
 };
