@@ -4,8 +4,20 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "compile": "npx truffle compile"
+    "accounts": "npx hardhat accounts",
+    "compile": "npx hardhat compile",
+    "clean": "npx hardhat clean",
+    "test": "npx hardhat test",
+    "test:gas": "REPORT_GAS=true npx hardhat test",
+    "coverage": "npx hardhat coverage",
+    "deploy": "npx hardhat run scripts/deploy.js",
+    "deploy:script": "node scripts/deploy.js",
+    "lint:js'": "npx eslint '**/*.js'",
+    "lint:fix": "npx eslint '**/*.js' --fix",
+    "prettier:check": "npx prettier '**/*.{json,sol,md}' --check",
+    "prettier:write": "npx prettier '**/*.{json,sol,md}' --write",
+    "solhint": "npx solhint 'contracts/**/*.sol'",
+    "solhint:fix": "npx solhint 'contracts/**/*.sol' --fix"
   },
   "repository": {
     "type": "git",
