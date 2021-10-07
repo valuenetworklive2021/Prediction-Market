@@ -79,7 +79,7 @@ contract BetToken is ERC20Pausable {
         if (balanceOf(recipient) == 0) totalHolders++;
         if (balanceOf(msg.sender) == amount) totalHolders--;
         success = super.transfer(recipient, amount);
-        require(success);
+        require(success, "ERR_TRANSFER_FAILED");
     }
 
     function transferFrom(
@@ -91,6 +91,6 @@ contract BetToken is ERC20Pausable {
         if (balanceOf(sender) == amount) totalHolders--;
 
         success = super.transferFrom(sender, recipient, amount);
-        require(success);
+        require(success, "ERR_TRANSFER_FROM_FAILED");
     }
 }
