@@ -20,16 +20,13 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
  */
 module.exports = {
   solidity: {
-    compilers: [
-      {
-        evmVersion: "istanbul",
-        version: "0.8.9",
-        optimizer: {
-          enabled: true,
-          runs: 200,
-        },
+    version: "0.8.9",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
       },
-    ],
+    },
   },
   networks: {
     hardhat: {
@@ -39,6 +36,8 @@ module.exports = {
       url: process.env.RINKEBY_URL || "",
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+      gasPrice: 20e9,
+      gas: 25e6,
     },
   },
   gasReporter: {
