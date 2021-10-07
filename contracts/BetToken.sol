@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.7.0;
+pragma solidity 0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 
 /**
  * @title BetToken
@@ -74,21 +74,23 @@ contract BetToken is ERC20Pausable {
     function transfer(address recipient, uint256 amount)
         public
         override
-        returns (bool)
+        returns (bool success)
     {
         if (balanceOf(recipient) == 0) totalHolders++;
         if (balanceOf(msg.sender) == amount) totalHolders--;
-        require(super.transfer(recipient, amount));
+        success = super.transfer(recipient, amount);
+        require(success);
     }
 
     function transferFrom(
         address sender,
         address recipient,
         uint256 amount
-    ) public override returns (bool) {
+    ) public override returns (bool success) {
         if (balanceOf(recipient) == 0) totalHolders++;
         if (balanceOf(sender) == amount) totalHolders--;
 
-        require(super.transferFrom(sender, recipient, amount));
+        success = super.transferFrom(sender, recipient, amount);
+        require(success);
     }
 }
