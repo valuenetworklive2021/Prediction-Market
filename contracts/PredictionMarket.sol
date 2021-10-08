@@ -8,6 +8,7 @@ import "./AggregatorV3Interface.sol";
 
 contract PredictionMarket is OwnableUpgradeable {
     uint256 public latestConditionIndex;
+    //deprecated
     uint256 public fee;
     uint256 public adminFeeRate;
     uint256 public ownerFeeRate;
@@ -38,6 +39,9 @@ contract PredictionMarket is OwnableUpgradeable {
         uint256 totalEthClaimable;
         address conditionOwner;
     }
+
+    //conditionIndex
+    mapping(uint256 => uint256) public betEndTime;
 
     event ConditionPrepared(
         address conditionOwner,
@@ -92,9 +96,10 @@ contract PredictionMarket is OwnableUpgradeable {
     }
 
     modifier whenMarketActive(uint256 _conditionIndex) {
-        uint256 betEndTime = (conditions[_conditionIndex].settlementTime * 90) /
-            100;
-        require(block.timestamp <= betEndTime, "ERR_INVALID_SETTLEMENT_TIME");
+        require(
+            block.timestamp <= betEndTime[_conditionIndex],
+            "ERR_INVALID_SETTLEMENT_TIME"
+        );
 
         _;
     }
@@ -293,6 +298,10 @@ contract PredictionMarket is OwnableUpgradeable {
                 _settlementTimePeriod
             ] = latestConditionIndex;
         }
+
+        betEndTime[latestConditionIndex] =
+            ((_settlementTimePeriod * 90) / 100) +
+            block.timestamp;
 
         emit ConditionPrepared(
             msg.sender,

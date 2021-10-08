@@ -60,7 +60,7 @@ module.exports = {
     currency: "USD",
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: process.env.API_KEY,
   },
   contractSizer: {
     alphaSort: true,
