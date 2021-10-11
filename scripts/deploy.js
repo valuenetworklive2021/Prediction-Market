@@ -1,25 +1,21 @@
-const { ethers, upgrades, run } = require("hardhat");
+const { ethers, run } = require("hardhat");
 
 async function main() {
   await run("compile");
 
   // We get the contract
   const PredictionMarket = await ethers.getContractFactory("PredictionMarket");
+  const ethUsdOracle = "";
+  const operatorAddress = "";
 
-  // *********** to deploy ***********
-  const predictionMarket = await upgrades.deployProxy(PredictionMarket, [
-    "0x2514895c72f50D8bd4B4F9b1110F0D6bD2c97526",
-  ]);
-  await predictionMarket.deployed();
-  console.log("PredictionMarket proxy deployed to:", predictionMarket.address);
-
-  const predictionMarketImplAddress =
-    await predictionMarket.getProxyImplementation();
-
-  console.log(
-    "PredictionMarket implementation deployed to:",
-    predictionMarketImplAddress
+  // deploy contracts
+  const predictionMarket = await PredictionMarket.deploy(
+    ethUsdOracle,
+    operatorAddress
   );
+
+  await predictionMarket.deployed();
+  console.log("PredictionMarket deployed to:", predictionMarket.address);
 
   // *********** to upgrade ***********
   // const predictionMarket = await upgrades.upgradeProxy(
