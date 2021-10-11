@@ -1,8 +1,110 @@
 // Sources flattened with hardhat v2.6.5 https://hardhat.org
-// File @openzeppelin/contracts/token/ERC20/IERC20.sol@v4.3.2
+
+// File @openzeppelin/contracts/utils/Context.sol@v4.3.2
+
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity ^0.8.0;
+
+/**
+ * @dev Provides information about the current execution context, including the
+ * sender of the transaction and its data. While these are generally available
+ * via msg.sender and msg.data, they should not be accessed in such a direct
+ * manner, since when dealing with meta-transactions the account sending and
+ * paying for execution may not be the actual sender (as far as an application
+ * is concerned).
+ *
+ * This contract is only required for intermediate, library-like contracts.
+ */
+abstract contract Context {
+    function _msgSender() internal view virtual returns (address) {
+        return msg.sender;
+    }
+
+    function _msgData() internal view virtual returns (bytes calldata) {
+        return msg.data;
+    }
+}
+
+
+// File @openzeppelin/contracts/access/Ownable.sol@v4.3.2
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.0;
+
+/**
+ * @dev Contract module which provides a basic access control mechanism, where
+ * there is an account (an owner) that can be granted exclusive access to
+ * specific functions.
+ *
+ * By default, the owner account will be the one that deploys the contract. This
+ * can later be changed with {transferOwnership}.
+ *
+ * This module is used through inheritance. It will make available the modifier
+ * `onlyOwner`, which can be applied to your functions to restrict their use to
+ * the owner.
+ */
+abstract contract Ownable is Context {
+    address private _owner;
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    /**
+     * @dev Initializes the contract setting the deployer as the initial owner.
+     */
+    constructor() {
+        _setOwner(_msgSender());
+    }
+
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    function owner() public view virtual returns (address) {
+        return _owner;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        require(owner() == _msgSender(), "Ownable: caller is not the owner");
+        _;
+    }
+
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * `onlyOwner` functions anymore. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will leave the contract without an owner,
+     * thereby removing any functionality that is only available to the owner.
+     */
+    function renounceOwnership() public virtual onlyOwner {
+        _setOwner(address(0));
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Can only be called by the current owner.
+     */
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        _setOwner(newOwner);
+    }
+
+    function _setOwner(address newOwner) private {
+        address oldOwner = _owner;
+        _owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
+    }
+}
+
+
+// File @openzeppelin/contracts/token/ERC20/IERC20.sol@v4.3.2
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.0;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
@@ -25,9 +127,7 @@ interface IERC20 {
      *
      * Emits a {Transfer} event.
      */
-    function transfer(address recipient, uint256 amount)
-        external
-        returns (bool);
+    function transfer(address recipient, uint256 amount) external returns (bool);
 
     /**
      * @dev Returns the remaining number of tokens that `spender` will be
@@ -36,10 +136,7 @@ interface IERC20 {
      *
      * This value changes when {approve} or {transferFrom} are called.
      */
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
 
     /**
      * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
@@ -84,14 +181,15 @@ interface IERC20 {
      * @dev Emitted when the allowance of a `spender` for an `owner` is set by
      * a call to {approve}. `value` is the new allowance.
      */
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
+
 // File @openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol@v4.3.2
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.0;
 
 /**
  * @dev Interface for the optional metadata functions from the ERC20 standard.
@@ -115,29 +213,14 @@ interface IERC20Metadata is IERC20 {
     function decimals() external view returns (uint8);
 }
 
-// File @openzeppelin/contracts/utils/Context.sol@v4.3.2
-
-/**
- * @dev Provides information about the current execution context, including the
- * sender of the transaction and its data. While these are generally available
- * via msg.sender and msg.data, they should not be accessed in such a direct
- * manner, since when dealing with meta-transactions the account sending and
- * paying for execution may not be the actual sender (as far as an application
- * is concerned).
- *
- * This contract is only required for intermediate, library-like contracts.
- */
-abstract contract Context {
-    function _msgSender() internal view virtual returns (address) {
-        return msg.sender;
-    }
-
-    function _msgData() internal view virtual returns (bytes calldata) {
-        return msg.data;
-    }
-}
 
 // File @openzeppelin/contracts/token/ERC20/ERC20.sol@v4.3.2
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.0;
+
+
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -230,13 +313,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
     /**
      * @dev See {IERC20-balanceOf}.
      */
-    function balanceOf(address account)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function balanceOf(address account) public view virtual override returns (uint256) {
         return _balances[account];
     }
 
@@ -248,12 +325,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      * - `recipient` cannot be the zero address.
      * - the caller must have a balance of at least `amount`.
      */
-    function transfer(address recipient, uint256 amount)
-        public
-        virtual
-        override
-        returns (bool)
-    {
+    function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(_msgSender(), recipient, amount);
         return true;
     }
@@ -261,13 +333,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
     /**
      * @dev See {IERC20-allowance}.
      */
-    function allowance(address owner, address spender)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function allowance(address owner, address spender) public view virtual override returns (uint256) {
         return _allowances[owner][spender];
     }
 
@@ -278,12 +344,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      *
      * - `spender` cannot be the zero address.
      */
-    function approve(address spender, uint256 amount)
-        public
-        virtual
-        override
-        returns (bool)
-    {
+    function approve(address spender, uint256 amount) public virtual override returns (bool) {
         _approve(_msgSender(), spender, amount);
         return true;
     }
@@ -309,10 +370,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
         _transfer(sender, recipient, amount);
 
         uint256 currentAllowance = _allowances[sender][_msgSender()];
-        require(
-            currentAllowance >= amount,
-            "ERC20: transfer amount exceeds allowance"
-        );
+        require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
         unchecked {
             _approve(sender, _msgSender(), currentAllowance - amount);
         }
@@ -332,16 +390,8 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      *
      * - `spender` cannot be the zero address.
      */
-    function increaseAllowance(address spender, uint256 addedValue)
-        public
-        virtual
-        returns (bool)
-    {
-        _approve(
-            _msgSender(),
-            spender,
-            _allowances[_msgSender()][spender] + addedValue
-        );
+    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
+        _approve(_msgSender(), spender, _allowances[_msgSender()][spender] + addedValue);
         return true;
     }
 
@@ -359,16 +409,9 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      * - `spender` must have allowance for the caller of at least
      * `subtractedValue`.
      */
-    function decreaseAllowance(address spender, uint256 subtractedValue)
-        public
-        virtual
-        returns (bool)
-    {
+    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
         uint256 currentAllowance = _allowances[_msgSender()][spender];
-        require(
-            currentAllowance >= subtractedValue,
-            "ERC20: decreased allowance below zero"
-        );
+        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
         unchecked {
             _approve(_msgSender(), spender, currentAllowance - subtractedValue);
         }
@@ -401,10 +444,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
         _beforeTokenTransfer(sender, recipient, amount);
 
         uint256 senderBalance = _balances[sender];
-        require(
-            senderBalance >= amount,
-            "ERC20: transfer amount exceeds balance"
-        );
+        require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
         unchecked {
             _balances[sender] = senderBalance - amount;
         }
@@ -530,7 +570,11 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
     ) internal virtual {}
 }
 
+
 // File contracts/BetToken.sol
+
+//SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.9;
 
 /**
  * @title BetToken
@@ -615,7 +659,11 @@ contract BetToken is ERC20 {
     }
 }
 
+
 // File contracts/AggregatorV3Interface.sol
+
+//SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.9;
 
 interface IAggregatorV3Interface {
     function decimals() external view returns (uint8);
@@ -650,224 +698,55 @@ interface IAggregatorV3Interface {
         );
 }
 
-// File contracts/mock/Oracle.sol
 
-// File: @chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol
+// File contracts/IUniswapV2Router02.sol
 
-// File: contracts/PriceOracle.sol
-contract PriceOracle is IAggregatorV3Interface {
-    uint8 public override decimals = 8;
-    string public override description = "BTC/USD";
-    uint256 public override version = 1;
+pragma solidity 0.8.9;
 
-    // getRoundData and latestRoundData should both raise "No data present"
-    // if they do not have data to report, instead of returning unset values
-    // which could be misinterpreted as actual reported values.
-    function getRoundData(uint80 _roundId)
-        external
-        view
-        override
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        )
-    {
-        return (_roundId, 1, 1, block.timestamp, 1);
-    }
+interface IUniswapV2Router02 {
+    function factory() external pure returns (address);
 
-    function latestRoundData()
-        external
-        view
-        override
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        )
-    {
-        return (1, 6000000000000, 1, block.timestamp, 1);
-    }
+    function WETH() external pure returns (address);
+
+    function swapExactETHForTokens(
+        uint256 amountOutMin,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external payable returns (uint256[] memory amounts);
 }
 
-// File @openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol@v4.3.2
 
-/**
- * @dev This is a base contract to aid in writing upgradeable contracts, or any kind of contract that will be deployed
- * behind a proxy. Since a proxied contract can't have a constructor, it's common to move constructor logic to an
- * external initializer function, usually called `initialize`. It then becomes necessary to protect this initializer
- * function so it can only be called once. The {initializer} modifier provided by this contract will have this effect.
- *
- * TIP: To avoid leaving the proxy in an uninitialized state, the initializer function should be called as early as
- * possible by providing the encoded function call as the `_data` argument to {ERC1967Proxy-constructor}.
- *
- * CAUTION: When used with inheritance, manual care must be taken to not invoke a parent initializer twice, or to ensure
- * that all initializers are idempotent. This is not verified automatically as constructors are by Solidity.
- */
-abstract contract Initializable {
-    /**
-     * @dev Indicates that the contract has been initialized.
-     */
-    bool private _initialized;
+// File contracts/PredictionMarketETH.sol
 
-    /**
-     * @dev Indicates that the contract is in the process of being initialized.
-     */
-    bool private _initializing;
+//SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.9;
 
-    /**
-     * @dev Modifier to protect an initializer function from being invoked twice.
-     */
-    modifier initializer() {
-        require(
-            _initializing || !_initialized,
-            "Initializable: contract is already initialized"
-        );
 
-        bool isTopLevelCall = !_initializing;
-        if (isTopLevelCall) {
-            _initializing = true;
-            _initialized = true;
-        }
 
-        _;
-
-        if (isTopLevelCall) {
-            _initializing = false;
-        }
-    }
-}
-
-// File @openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol@v4.3.2
-
-/**
- * @dev Provides information about the current execution context, including the
- * sender of the transaction and its data. While these are generally available
- * via msg.sender and msg.data, they should not be accessed in such a direct
- * manner, since when dealing with meta-transactions the account sending and
- * paying for execution may not be the actual sender (as far as an application
- * is concerned).
- *
- * This contract is only required for intermediate, library-like contracts.
- */
-abstract contract ContextUpgradeable is Initializable {
-    function __Context_init() internal initializer {
-        __Context_init_unchained();
-    }
-
-    function __Context_init_unchained() internal initializer {}
-
-    function _msgSender() internal view virtual returns (address) {
-        return msg.sender;
-    }
-
-    function _msgData() internal view virtual returns (bytes calldata) {
-        return msg.data;
-    }
-
-    uint256[50] private __gap;
-}
-
-// File @openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol@v4.3.2
-
-/**
- * @dev Contract module which provides a basic access control mechanism, where
- * there is an account (an owner) that can be granted exclusive access to
- * specific functions.
- *
- * By default, the owner account will be the one that deploys the contract. This
- * can later be changed with {transferOwnership}.
- *
- * This module is used through inheritance. It will make available the modifier
- * `onlyOwner`, which can be applied to your functions to restrict their use to
- * the owner.
- */
-abstract contract OwnableUpgradeable is Initializable, ContextUpgradeable {
-    address private _owner;
-
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
-
-    /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
-     */
-    function __Ownable_init() internal initializer {
-        __Context_init_unchained();
-        __Ownable_init_unchained();
-    }
-
-    function __Ownable_init_unchained() internal initializer {
-        _setOwner(_msgSender());
-    }
-
-    /**
-     * @dev Returns the address of the current owner.
-     */
-    function owner() public view virtual returns (address) {
-        return _owner;
-    }
-
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        require(owner() == _msgSender(), "Ownable: caller is not the owner");
-        _;
-    }
-
-    /**
-     * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
-     *
-     * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
-     */
-    function renounceOwnership() public virtual onlyOwner {
-        _setOwner(address(0));
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
-     */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(
-            newOwner != address(0),
-            "Ownable: new owner is the zero address"
-        );
-        _setOwner(newOwner);
-    }
-
-    function _setOwner(address newOwner) private {
-        address oldOwner = _owner;
-        _owner = newOwner;
-        emit OwnershipTransferred(oldOwner, newOwner);
-    }
-
-    uint256[49] private __gap;
-}
-
-// File contracts/PredictionMarket.sol
-
-contract PredictionMarket is OwnableUpgradeable {
+contract PredictionMarketETH is Ownable {
     uint256 public latestConditionIndex;
-    uint256 public fee;
     uint256 public adminFeeRate;
     uint256 public ownerFeeRate;
     uint256 public marketCreationFee;
 
     address public operatorAddress;
     address public ethUsdOracleAddress;
+    IUniswapV2Router02 public constant uniswapV2Router =
+        IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+
+    address public constant VNTW =
+        address(0xd0f05D3D4e4d1243Ac826d8c6171180c58eaa9BC);
+    address public constant WETH =
+        address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     uint256 private _status;
 
     mapping(uint256 => ConditionInfo) public conditions;
+
+    //owner/marketOwner => conditionIndex => feesClaimed
+    mapping(address => mapping(uint256 => uint256)) public feeClaimed;
+    mapping(address => uint256) public feeToBeClaimed;
 
     //oracle address -> interval -> index
     mapping(address => mapping(uint256 => uint256)) public autoGeneratedMarkets;
@@ -887,6 +766,9 @@ contract PredictionMarket is OwnableUpgradeable {
         uint256 totalEthClaimable;
         address conditionOwner;
     }
+
+    //conditionIndex
+    mapping(uint256 => uint256) public betEndTime;
 
     event ConditionPrepared(
         address conditionOwner,
@@ -941,9 +823,10 @@ contract PredictionMarket is OwnableUpgradeable {
     }
 
     modifier whenMarketActive(uint256 _conditionIndex) {
-        uint256 betEndTime = (conditions[_conditionIndex].settlementTime * 90) /
-            100;
-        require(block.timestamp <= betEndTime, "ERR_INVALID_SETTLEMENT_TIME");
+        require(
+            block.timestamp <= betEndTime[_conditionIndex],
+            "ERR_INVALID_SETTLEMENT_TIME"
+        );
 
         _;
     }
@@ -961,20 +844,12 @@ contract PredictionMarket is OwnableUpgradeable {
      * @param _ethUsdOracleAddress The address of ETH-USD oracle.
      */
     // solhint-disable-next-line
-    function initialize(address _ethUsdOracleAddress) external initializer {
-        __Ownable_init();
-        __PredictionMarket_init_unchained(_ethUsdOracleAddress);
-    }
-
-    // solhint-disable-next-line
-    function __PredictionMarket_init_unchained(address _ethUsdOracleAddress)
-        internal
-        initializer
-    {
+    constructor(address _ethUsdOracleAddress, address _operator) {
         require(
             _ethUsdOracleAddress != address(0),
             "ERR_ZERO_ADDRESS_FOR_ORACLE"
         );
+        require(_operator != address(0), "ERR_ZERO_ADDRESS_FOR_OPERATOR");
 
         ethUsdOracleAddress = _ethUsdOracleAddress;
 
@@ -982,7 +857,7 @@ contract PredictionMarket is OwnableUpgradeable {
         ownerFeeRate = 20;
         marketCreationFee = 5; //in dollars
 
-        operatorAddress = msg.sender;
+        operatorAddress = _operator;
         _paused = false;
         _status = 1;
     }
@@ -1143,6 +1018,10 @@ contract PredictionMarket is OwnableUpgradeable {
             ] = latestConditionIndex;
         }
 
+        betEndTime[latestConditionIndex] =
+            ((_settlementTimePeriod * 90) / 100) +
+            block.timestamp;
+
         emit ConditionPrepared(
             msg.sender,
             latestConditionIndex,
@@ -1276,6 +1155,7 @@ contract PredictionMarket is OwnableUpgradeable {
 
         conditionInfo.totalEthClaimable = _transferFees(
             total,
+            _conditionIndex,
             conditionInfo.conditionOwner
         );
 
@@ -1288,16 +1168,56 @@ contract PredictionMarket is OwnableUpgradeable {
         );
     }
 
-    function _transferFees(uint256 totalAmount, address conditionOwner)
-        internal
-        returns (uint256 afterFeeAmount)
-    {
+    function _transferFees(
+        uint256 totalAmount,
+        uint256 _conditionIndex,
+        address conditionOwner
+    ) internal returns (uint256 afterFeeAmount) {
         uint256 _fees = (totalAmount * (adminFeeRate + ownerFeeRate)) / (1000);
         afterFeeAmount = totalAmount - (_fees);
 
         uint256 ownerFees = (_fees * (ownerFeeRate)) / 1000;
+        feeClaimed[conditionOwner][_conditionIndex] = ownerFees;
+        feeClaimed[owner()][_conditionIndex] = _fees - (ownerFees);
+
+        feeToBeClaimed[conditionOwner] += ownerFees;
+
         safeTransferETH(owner(), _fees - (ownerFees));
-        safeTransferETH(conditionOwner, ownerFees);
+    }
+
+    function claimFees(address conditionOwner)
+        external
+        returns (uint256 feesClaimed)
+    {
+        uint256 ownerFeesInETH = feeToBeClaimed[conditionOwner];
+        require(ownerFeesInETH != 0, "ERR_ALREADY_CLAIMED");
+
+        feeToBeClaimed[conditionOwner] = 0;
+        feesClaimed = _swap(ownerFeesInETH, conditionOwner);
+    }
+
+    function swapVNTW(uint256 ethAmount, address to)
+        external
+        payable
+        returns (uint256)
+    {
+        require(ethAmount > 0, "ERR_INVALID_AMOUNT");
+        require(ethAmount == msg.value, "ERR_INVALID_AMOUNT_SENT");
+
+        require(to != address(0), "ERR_INVALID_ADDRESS");
+
+        return _swap(ethAmount, to);
+    }
+
+    function _swap(uint256 ethAmount, address to) internal returns (uint256) {
+        address[] memory path;
+        path[0] = WETH;
+        path[1] = VNTW;
+
+        uint256[] memory amountOut = uniswapV2Router.swapExactETHForTokens{
+            value: ethAmount
+        }(1, path, to, 0xff);
+        return amountOut[0];
     }
 
     function claim(uint256 _conditionIndex) public {
@@ -1346,10 +1266,7 @@ contract PredictionMarket is OwnableUpgradeable {
                 userStake
             );
         } else {
-            safeTransferETH(
-                conditionInfo.conditionOwner,
-                conditionInfo.totalEthClaimable
-            );
+            safeTransferETH(owner(), conditionInfo.totalEthClaimable);
             totalWinnerRedeemable = 0;
             conditionInfo.totalEthClaimable = 0;
         }

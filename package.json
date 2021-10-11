@@ -10,7 +10,7 @@
     "coverage": "npx hardhat coverage",
     "deploy": "npx hardhat run scripts/deploy.js",
     "deploy:script": "node scripts/deploy.js",
-    "flatten": "npx hardhat flatten > Flattened_PredictionMarket.sol",
+    "flatten": "npx hardhat flatten contracts/PredictionMarketETH.sol > Flattened_PredictionMarket.sol",
     "lint:js'": "npx eslint '**/*.js'",
     "lint:fix": "npx eslint '**/*.js' --fix",
     "precompile": "yarn clean",
