@@ -430,7 +430,7 @@ contract PredictionMarket is Ownable {
         uint256 total = conditionInfo.totalStakedAbove +
             conditionInfo.totalStakedBelow;
 
-        conditionInfo.totalEthClaimable = _transferFees(
+        conditionInfo.totalEthClaimable = _distributeFees(
             total,
             _conditionIndex,
             conditionInfo.conditionOwner
@@ -445,7 +445,7 @@ contract PredictionMarket is Ownable {
         );
     }
 
-    function _transferFees(
+    function _distributeFees(
         uint256 totalAmount,
         uint256 _conditionIndex,
         address conditionOwner
@@ -455,12 +455,13 @@ contract PredictionMarket is Ownable {
         afterFeeAmount = totalAmount - (_fees);
 
         uint256 ownerFees = (_fees * (ownerFeeRate)) / totalFeeRate;
-        feeClaimed[conditionOwner][_conditionIndex] += ownerFees;
-        feeClaimed[owner()][_conditionIndex] += _fees - (ownerFees);
 
         if (owner() == conditionOwner) {
+            feeClaimed[owner()][_conditionIndex] += _fees;
             safeTransferETH(owner(), _fees);
         } else {
+            feeClaimed[conditionOwner][_conditionIndex] += ownerFees;
+            feeClaimed[owner()][_conditionIndex] += _fees - (ownerFees);
             safeTransferETH(owner(), _fees - (ownerFees));
             safeTransferETH(conditionOwner, ownerFees);
         }
