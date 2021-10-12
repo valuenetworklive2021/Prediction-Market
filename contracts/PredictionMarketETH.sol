@@ -20,8 +20,6 @@ contract PredictionMarketETH is Ownable {
 
     address public constant VNTW =
         address(0xd0f05D3D4e4d1243Ac826d8c6171180c58eaa9BC);
-    address public constant WETH =
-        address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     uint256 private _status;
 
@@ -235,7 +233,10 @@ contract PredictionMarketETH is Ownable {
 
     function getMarketCreationFee() public view returns (uint256 toDeduct) {
         int256 latestPrice = getPrice(ethUsdOracleAddress);
-        toDeduct = (marketCreationFee * 1 ether) / uint256(latestPrice);
+        uint8 decimals = IAggregatorV3Interface(ethUsdOracleAddress).decimals();
+        toDeduct =
+            (marketCreationFee * 1 ether * 10**decimals) /
+            uint256(latestPrice);
     }
 
     function _deductMarketCreationFee() internal returns (uint256 toDeduct) {
@@ -436,7 +437,7 @@ contract PredictionMarketETH is Ownable {
         uint256 total = conditionInfo.totalStakedAbove +
             conditionInfo.totalStakedBelow;
 
-        conditionInfo.totalEthClaimable = _transferFees(
+        conditionInfo.totalEthClaimable = _distributeFees(
             total,
             _conditionIndex,
             conditionInfo.conditionOwner
@@ -451,55 +452,50 @@ contract PredictionMarketETH is Ownable {
         );
     }
 
-    function _transferFees(
+    function _distributeFees(
         uint256 totalAmount,
         uint256 _conditionIndex,
         address conditionOwner
     ) internal returns (uint256 afterFeeAmount) {
-        uint256 _fees = (totalAmount * (adminFeeRate + ownerFeeRate)) / (1000);
+        uint256 totalFeeRate = adminFeeRate + ownerFeeRate;
+        uint256 _fees = (totalAmount * (totalFeeRate)) / (1000);
         afterFeeAmount = totalAmount - (_fees);
 
-        uint256 ownerFees = (_fees * (ownerFeeRate)) / 1000;
-        feeClaimed[conditionOwner][_conditionIndex] = ownerFees;
-        feeClaimed[owner()][_conditionIndex] = _fees - (ownerFees);
+        uint256 ownerFees = (_fees * (ownerFeeRate)) / totalFeeRate;
 
-        feeToBeClaimed[conditionOwner] += ownerFees;
+        if (owner() == conditionOwner) {
+            feeClaimed[owner()][_conditionIndex] += _fees;
+            feeToBeClaimed[conditionOwner] += _fees;
+        } else {
+            feeClaimed[conditionOwner][_conditionIndex] += ownerFees;
+            feeClaimed[owner()][_conditionIndex] += _fees - (ownerFees);
 
-        safeTransferETH(owner(), _fees - (ownerFees));
+            feeToBeClaimed[conditionOwner] += ownerFees;
+            feeToBeClaimed[owner()] += _fees - (ownerFees);
+        }
     }
 
-    function claimFees(address conditionOwner)
-        external
-        returns (uint256 feesClaimed)
-    {
-        uint256 ownerFeesInETH = feeToBeClaimed[conditionOwner];
-        require(ownerFeesInETH != 0, "ERR_ALREADY_CLAIMED");
+    function claimFees() external returns (uint256 feesClaimed) {
+        uint256 feesInETH = feeToBeClaimed[msg.sender];
+        require(feesInETH != 0, "ERR_ALREADY_CLAIMED");
 
-        feeToBeClaimed[conditionOwner] = 0;
-        feesClaimed = _swap(ownerFeesInETH, conditionOwner);
+        feeToBeClaimed[msg.sender] = 0;
+        feesClaimed = _swap(feesInETH, msg.sender);
     }
 
-    function swapVNTW(uint256 ethAmount, address to)
-        external
-        payable
-        returns (uint256)
-    {
-        require(ethAmount > 0, "ERR_INVALID_AMOUNT");
-        require(ethAmount == msg.value, "ERR_INVALID_AMOUNT_SENT");
-
-        require(to != address(0), "ERR_INVALID_ADDRESS");
-
-        return _swap(ethAmount, to);
+    function swapVNTW() external payable returns (uint256) {
+        require(msg.value != 0, "ERR_INVALID_AMOUNT_SENT");
+        return _swap(msg.value, msg.sender);
     }
 
     function _swap(uint256 ethAmount, address to) internal returns (uint256) {
-        address[] memory path;
-        path[0] = WETH;
+        address[] memory path = new address[](2);
+        path[0] = uniswapV2Router.WETH();
         path[1] = VNTW;
 
         uint256[] memory amountOut = uniswapV2Router.swapExactETHForTokens{
             value: ethAmount
-        }(1, path, to, 0xff);
+        }(1, path, to, block.timestamp);
         return amountOut[0];
     }
 
