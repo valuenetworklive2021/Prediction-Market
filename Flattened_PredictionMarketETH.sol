@@ -1,10 +1,9 @@
 // Sources flattened with hardhat v2.6.5 https://hardhat.org
 
 // File @openzeppelin/contracts/utils/Context.sol@v4.3.2
-
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.9;
 
 /**
  * @dev Provides information about the current execution context, including the
@@ -26,12 +25,7 @@ abstract contract Context {
     }
 }
 
-
 // File @openzeppelin/contracts/access/Ownable.sol@v4.3.2
-
-// SPDX-License-Identifier: MIT
-
-pragma solidity ^0.8.0;
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -48,7 +42,10 @@ pragma solidity ^0.8.0;
 abstract contract Ownable is Context {
     address private _owner;
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferred(
+        address indexed previousOwner,
+        address indexed newOwner
+    );
 
     /**
      * @dev Initializes the contract setting the deployer as the initial owner.
@@ -88,7 +85,10 @@ abstract contract Ownable is Context {
      * Can only be called by the current owner.
      */
     function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        require(
+            newOwner != address(0),
+            "Ownable: new owner is the zero address"
+        );
         _setOwner(newOwner);
     }
 
@@ -99,12 +99,7 @@ abstract contract Ownable is Context {
     }
 }
 
-
 // File @openzeppelin/contracts/token/ERC20/IERC20.sol@v4.3.2
-
-// SPDX-License-Identifier: MIT
-
-pragma solidity ^0.8.0;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
@@ -127,7 +122,9 @@ interface IERC20 {
      *
      * Emits a {Transfer} event.
      */
-    function transfer(address recipient, uint256 amount) external returns (bool);
+    function transfer(address recipient, uint256 amount)
+        external
+        returns (bool);
 
     /**
      * @dev Returns the remaining number of tokens that `spender` will be
@@ -136,7 +133,10 @@ interface IERC20 {
      *
      * This value changes when {approve} or {transferFrom} are called.
      */
-    function allowance(address owner, address spender) external view returns (uint256);
+    function allowance(address owner, address spender)
+        external
+        view
+        returns (uint256);
 
     /**
      * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
@@ -181,15 +181,14 @@ interface IERC20 {
      * @dev Emitted when the allowance of a `spender` for an `owner` is set by
      * a call to {approve}. `value` is the new allowance.
      */
-    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
 }
 
-
 // File @openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol@v4.3.2
-
-// SPDX-License-Identifier: MIT
-
-pragma solidity ^0.8.0;
 
 /**
  * @dev Interface for the optional metadata functions from the ERC20 standard.
@@ -213,14 +212,7 @@ interface IERC20Metadata is IERC20 {
     function decimals() external view returns (uint8);
 }
 
-
 // File @openzeppelin/contracts/token/ERC20/ERC20.sol@v4.3.2
-
-// SPDX-License-Identifier: MIT
-
-pragma solidity ^0.8.0;
-
-
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -313,7 +305,13 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
     /**
      * @dev See {IERC20-balanceOf}.
      */
-    function balanceOf(address account) public view virtual override returns (uint256) {
+    function balanceOf(address account)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         return _balances[account];
     }
 
@@ -325,7 +323,12 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      * - `recipient` cannot be the zero address.
      * - the caller must have a balance of at least `amount`.
      */
-    function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
+    function transfer(address recipient, uint256 amount)
+        public
+        virtual
+        override
+        returns (bool)
+    {
         _transfer(_msgSender(), recipient, amount);
         return true;
     }
@@ -333,7 +336,13 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
     /**
      * @dev See {IERC20-allowance}.
      */
-    function allowance(address owner, address spender) public view virtual override returns (uint256) {
+    function allowance(address owner, address spender)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         return _allowances[owner][spender];
     }
 
@@ -344,7 +353,12 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      *
      * - `spender` cannot be the zero address.
      */
-    function approve(address spender, uint256 amount) public virtual override returns (bool) {
+    function approve(address spender, uint256 amount)
+        public
+        virtual
+        override
+        returns (bool)
+    {
         _approve(_msgSender(), spender, amount);
         return true;
     }
@@ -370,7 +384,10 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
         _transfer(sender, recipient, amount);
 
         uint256 currentAllowance = _allowances[sender][_msgSender()];
-        require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
+        require(
+            currentAllowance >= amount,
+            "ERC20: transfer amount exceeds allowance"
+        );
         unchecked {
             _approve(sender, _msgSender(), currentAllowance - amount);
         }
@@ -390,8 +407,16 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      *
      * - `spender` cannot be the zero address.
      */
-    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        _approve(_msgSender(), spender, _allowances[_msgSender()][spender] + addedValue);
+    function increaseAllowance(address spender, uint256 addedValue)
+        public
+        virtual
+        returns (bool)
+    {
+        _approve(
+            _msgSender(),
+            spender,
+            _allowances[_msgSender()][spender] + addedValue
+        );
         return true;
     }
 
@@ -409,9 +434,16 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      * - `spender` must have allowance for the caller of at least
      * `subtractedValue`.
      */
-    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
+    function decreaseAllowance(address spender, uint256 subtractedValue)
+        public
+        virtual
+        returns (bool)
+    {
         uint256 currentAllowance = _allowances[_msgSender()][spender];
-        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
+        require(
+            currentAllowance >= subtractedValue,
+            "ERC20: decreased allowance below zero"
+        );
         unchecked {
             _approve(_msgSender(), spender, currentAllowance - subtractedValue);
         }
@@ -444,7 +476,10 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
         _beforeTokenTransfer(sender, recipient, amount);
 
         uint256 senderBalance = _balances[sender];
-        require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
+        require(
+            senderBalance >= amount,
+            "ERC20: transfer amount exceeds balance"
+        );
         unchecked {
             _balances[sender] = senderBalance - amount;
         }
@@ -570,11 +605,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
     ) internal virtual {}
 }
 
-
 // File contracts/BetToken.sol
-
-//SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.9;
 
 /**
  * @title BetToken
@@ -659,11 +690,7 @@ contract BetToken is ERC20 {
     }
 }
 
-
 // File contracts/AggregatorV3Interface.sol
-
-//SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.9;
 
 interface IAggregatorV3Interface {
     function decimals() external view returns (uint8);
@@ -698,10 +725,7 @@ interface IAggregatorV3Interface {
         );
 }
 
-
 // File contracts/IUniswapV2Router02.sol
-
-pragma solidity 0.8.9;
 
 interface IUniswapV2Router02 {
     function factory() external pure returns (address);
@@ -716,13 +740,7 @@ interface IUniswapV2Router02 {
     ) external payable returns (uint256[] memory amounts);
 }
 
-
 // File contracts/PredictionMarketETH.sol
-
-//SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.9;
-
-
 
 contract PredictionMarketETH is Ownable {
     uint256 public latestConditionIndex;
@@ -737,8 +755,6 @@ contract PredictionMarketETH is Ownable {
 
     address public constant VNTW =
         address(0xd0f05D3D4e4d1243Ac826d8c6171180c58eaa9BC);
-    address public constant WETH =
-        address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     uint256 private _status;
 
@@ -952,7 +968,10 @@ contract PredictionMarketETH is Ownable {
 
     function getMarketCreationFee() public view returns (uint256 toDeduct) {
         int256 latestPrice = getPrice(ethUsdOracleAddress);
-        toDeduct = (marketCreationFee * 1 ether) / uint256(latestPrice);
+        uint8 decimals = IAggregatorV3Interface(ethUsdOracleAddress).decimals();
+        toDeduct =
+            (marketCreationFee * 1 ether * 10**decimals) /
+            uint256(latestPrice);
     }
 
     function _deductMarketCreationFee() internal returns (uint256 toDeduct) {
@@ -1153,7 +1172,7 @@ contract PredictionMarketETH is Ownable {
         uint256 total = conditionInfo.totalStakedAbove +
             conditionInfo.totalStakedBelow;
 
-        conditionInfo.totalEthClaimable = _transferFees(
+        conditionInfo.totalEthClaimable = _distributeFees(
             total,
             _conditionIndex,
             conditionInfo.conditionOwner
@@ -1168,55 +1187,50 @@ contract PredictionMarketETH is Ownable {
         );
     }
 
-    function _transferFees(
+    function _distributeFees(
         uint256 totalAmount,
         uint256 _conditionIndex,
         address conditionOwner
     ) internal returns (uint256 afterFeeAmount) {
-        uint256 _fees = (totalAmount * (adminFeeRate + ownerFeeRate)) / (1000);
+        uint256 totalFeeRate = adminFeeRate + ownerFeeRate;
+        uint256 _fees = (totalAmount * (totalFeeRate)) / (1000);
         afterFeeAmount = totalAmount - (_fees);
 
-        uint256 ownerFees = (_fees * (ownerFeeRate)) / 1000;
-        feeClaimed[conditionOwner][_conditionIndex] = ownerFees;
-        feeClaimed[owner()][_conditionIndex] = _fees - (ownerFees);
+        uint256 ownerFees = (_fees * (ownerFeeRate)) / totalFeeRate;
 
-        feeToBeClaimed[conditionOwner] += ownerFees;
+        if (owner() == conditionOwner) {
+            feeClaimed[owner()][_conditionIndex] += _fees;
+            feeToBeClaimed[conditionOwner] += _fees;
+        } else {
+            feeClaimed[conditionOwner][_conditionIndex] += ownerFees;
+            feeClaimed[owner()][_conditionIndex] += _fees - (ownerFees);
 
-        safeTransferETH(owner(), _fees - (ownerFees));
+            feeToBeClaimed[conditionOwner] += ownerFees;
+            feeToBeClaimed[owner()] += _fees - (ownerFees);
+        }
     }
 
-    function claimFees(address conditionOwner)
-        external
-        returns (uint256 feesClaimed)
-    {
-        uint256 ownerFeesInETH = feeToBeClaimed[conditionOwner];
-        require(ownerFeesInETH != 0, "ERR_ALREADY_CLAIMED");
+    function claimFees() external returns (uint256 feesClaimed) {
+        uint256 feesInETH = feeToBeClaimed[msg.sender];
+        require(feesInETH != 0, "ERR_ALREADY_CLAIMED");
 
-        feeToBeClaimed[conditionOwner] = 0;
-        feesClaimed = _swap(ownerFeesInETH, conditionOwner);
+        feeToBeClaimed[msg.sender] = 0;
+        feesClaimed = _swap(feesInETH, msg.sender);
     }
 
-    function swapVNTW(uint256 ethAmount, address to)
-        external
-        payable
-        returns (uint256)
-    {
-        require(ethAmount > 0, "ERR_INVALID_AMOUNT");
-        require(ethAmount == msg.value, "ERR_INVALID_AMOUNT_SENT");
-
-        require(to != address(0), "ERR_INVALID_ADDRESS");
-
-        return _swap(ethAmount, to);
+    function swapVNTW() external payable returns (uint256) {
+        require(msg.value != 0, "ERR_INVALID_AMOUNT_SENT");
+        return _swap(msg.value, msg.sender);
     }
 
     function _swap(uint256 ethAmount, address to) internal returns (uint256) {
-        address[] memory path;
-        path[0] = WETH;
+        address[] memory path = new address[](2);
+        path[0] = uniswapV2Router.WETH();
         path[1] = VNTW;
 
         uint256[] memory amountOut = uniswapV2Router.swapExactETHForTokens{
             value: ethAmount
-        }(1, path, to, 0xff);
+        }(1, path, to, block.timestamp);
         return amountOut[0];
     }
 
