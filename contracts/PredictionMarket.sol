@@ -226,7 +226,10 @@ contract PredictionMarket is Ownable {
 
     function getMarketCreationFee() public view returns (uint256 toDeduct) {
         int256 latestPrice = getPrice(ethUsdOracleAddress);
-        toDeduct = (marketCreationFee * 1 ether) / uint256(latestPrice);
+        uint8 decimals = IAggregatorV3Interface(ethUsdOracleAddress).decimals();
+        toDeduct =
+            (marketCreationFee * 1 ether * 10**decimals) /
+            uint256(latestPrice);
     }
 
     function _deductMarketCreationFee() internal returns (uint256 toDeduct) {
@@ -447,15 +450,20 @@ contract PredictionMarket is Ownable {
         uint256 _conditionIndex,
         address conditionOwner
     ) internal returns (uint256 afterFeeAmount) {
-        uint256 _fees = (totalAmount * (adminFeeRate + ownerFeeRate)) / (1000);
+        uint256 totalFeeRate = adminFeeRate + ownerFeeRate;
+        uint256 _fees = (totalAmount * (totalFeeRate)) / (1000);
         afterFeeAmount = totalAmount - (_fees);
 
-        uint256 ownerFees = (_fees * (ownerFeeRate)) / 1000;
-        feeClaimed[conditionOwner][_conditionIndex] = ownerFees;
-        feeClaimed[owner()][_conditionIndex] = _fees - (ownerFees);
+        uint256 ownerFees = (_fees * (ownerFeeRate)) / totalFeeRate;
+        feeClaimed[conditionOwner][_conditionIndex] += ownerFees;
+        feeClaimed[owner()][_conditionIndex] += _fees - (ownerFees);
 
-        safeTransferETH(owner(), _fees - (ownerFees));
-        safeTransferETH(conditionOwner, ownerFees);
+        if (owner() == conditionOwner) {
+            safeTransferETH(owner(), _fees);
+        } else {
+            safeTransferETH(owner(), _fees - (ownerFees));
+            safeTransferETH(conditionOwner, ownerFees);
+        }
     }
 
     function claim(uint256 _conditionIndex) public {
