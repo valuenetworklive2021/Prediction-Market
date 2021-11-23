@@ -8,8 +8,9 @@
     "compile": "npx hardhat compile",
     "clean": "npx hardhat clean",
     "coverage": "npx hardhat coverage",
-    "deploy": "npx hardhat run scripts/deploy.js",
-    "deploy:script": "node scripts/deploy.js",
+    "deploy": "npx hardhat --network hardhat deploy",
+    "deploy:rinkeby": "npx hardhat --network rinkeby deploy",
+    "deploy:mumbai": "npx hardhat --network mumbai deploy",
     "flatten": "npx hardhat flatten contracts/PredictionMarket.sol > Flattened_PredictionMarket.sol",
     "lint:js'": "npx eslint '**/*.js'",
     "lint:fix": "npx eslint '**/*.js' --fix",
@@ -27,14 +28,21 @@
     "url": "git+https://github.com/valuenetworklive2021/Prediction-Market.git"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/valuenetworklive2021/Prediction-Market/issues"
   },
   "homepage": "https://github.com/valuenetworklive2021/Prediction-Market#readme",
   "dependencies": {
+    "@nomiclabs/hardhat-solhint": "^2.0.0",
     "@openzeppelin/contracts": "^4.3.2",
     "@openzeppelin/contracts-upgradeable": "^4.3.2",
+    "fs": "^0.0.1-security",
+    "hardhat-abi-exporter": "^2.3.1",
+    "hardhat-deploy": "^0.9.10",
+    "hardhat-deploy-ethers": "^0.3.0-beta.11",
+    "hardhat-spdx-license-identifier": "^2.0.3",
+    "hardhat-watcher": "^2.1.1",
     "truffle": "^5.3.1"
   },
   "devDependencies": {

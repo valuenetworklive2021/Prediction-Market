@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -7,7 +7,7 @@ import "./BetToken.sol";
 import "./AggregatorV3Interface.sol";
 import "./IUniswapV2Router02.sol";
 
-contract PredictionMarketETH is Ownable {
+contract PredictionMarketCommission is Ownable {
     uint256 public latestConditionIndex;
     uint256 public adminFeeRate;
     uint256 public ownerFeeRate;
@@ -16,10 +16,10 @@ contract PredictionMarketETH is Ownable {
     address public operatorAddress;
     address public ethUsdOracleAddress;
     IUniswapV2Router02 public constant uniswapV2Router =
-        IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+        IUniswapV2Router02(0x0e58e0D381b0EC653bE3A29f1b90C42944735222);
 
     address public constant VNTW =
-        address(0xd0f05D3D4e4d1243Ac826d8c6171180c58eaa9BC);
+        address(0x267C1BA541d751489155a980E54f229535a72009);
 
     uint256 private _status;
 
