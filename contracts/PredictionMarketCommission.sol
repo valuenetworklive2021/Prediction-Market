@@ -16,7 +16,7 @@ contract PredictionMarketCommission is Ownable {
     address public operatorAddress;
     address public ethUsdOracleAddress;
     IUniswapV2Router02 public constant uniswapV2Router =
-        IUniswapV2Router02(0x0e58e0D381b0EC653bE3A29f1b90C42944735222);
+        IUniswapV2Router02(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
 
     address public constant VNTW =
         address(0x267C1BA541d751489155a980E54f229535a72009);
