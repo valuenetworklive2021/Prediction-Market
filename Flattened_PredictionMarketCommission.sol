@@ -750,7 +750,7 @@ contract PredictionMarketCommission is Ownable {
         IUniswapV2Router02(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
 
     address public constant VNTW =
-        address(0x267C1BA541d751489155a980E54f229535a72009);
+        address(0xfba8a25156c33fecbe84f57c2d45c1d50f5afcd0);
 
     uint256 private _status;
 
@@ -1314,4 +1314,3 @@ contract PredictionMarketCommission is Ownable {
         hbtBalance = BetToken(condition.highBetToken).balanceOf(_user);
     }
 }
-Done in 3.07s.
