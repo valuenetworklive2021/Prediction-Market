@@ -1314,3 +1314,4 @@ contract PredictionMarketCommission is Ownable {
         hbtBalance = BetToken(condition.highBetToken).balanceOf(_user);
     }
 }
+Done in 3.07s.
