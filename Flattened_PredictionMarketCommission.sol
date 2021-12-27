@@ -1168,11 +1168,18 @@ contract PredictionMarketCommission is Ownable {
         uint256 total = conditionInfo.totalStakedAbove +
             conditionInfo.totalStakedBelow;
 
-        conditionInfo.totalEthClaimable = _distributeFees(
-            total,
-            _conditionIndex,
-            conditionInfo.conditionOwner
-        );
+        if (
+            conditionInfo.totalStakedAbove == 0 ||
+            conditionInfo.totalStakedBelow == 0
+        ) {
+            conditionInfo.totalEthClaimable = total;
+        } else {
+            conditionInfo.totalEthClaimable = _distributeFees(
+                total,
+                _conditionIndex,
+                conditionInfo.conditionOwner
+            );
+        }
 
         conditionInfo.settledPrice = getPrice(conditionInfo.oracle);
 
@@ -1243,6 +1250,11 @@ contract PredictionMarketCommission is Ownable {
         require(_userAddress != address(0), "ERR_INVALID_USER_ADDRESS");
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
 
+        require(
+            conditionInfo.totalEthClaimable != 0,
+            "ERR_ALL_AMOUNT_ALREADY_CLAIMED"
+        );
+
         BetToken lowBetToken = BetToken(conditionInfo.lowBetToken);
         BetToken highBetToken = BetToken(conditionInfo.highBetToken);
         if (!conditionInfo.isSettled) {
@@ -1250,8 +1262,12 @@ contract PredictionMarketCommission is Ownable {
         }
 
         uint256 totalWinnerRedeemable;
-        //Amount Redeemable including winnerRedeemable & user initial Stake
-        if (conditionInfo.settledPrice > conditionInfo.triggerPrice) {
+
+        if (conditionInfo.totalStakedAbove == 0) {
+            totalWinnerRedeemable = lowBetToken.balanceOf(_userAddress);
+        } else if (conditionInfo.totalStakedBelow == 0) {
+            totalWinnerRedeemable = highBetToken.balanceOf(_userAddress);
+        } else if (conditionInfo.settledPrice > conditionInfo.triggerPrice) {
             //Users who predicted above price wins
             uint256 userStake = highBetToken.balanceOf(_userAddress);
 

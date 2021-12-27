@@ -11,7 +11,7 @@
     "deploy": "npx hardhat --network hardhat deploy",
     "deploy:rinkeby": "npx hardhat --network rinkeby deploy",
     "deploy:mumbai": "npx hardhat --network mumbai deploy",
-    "flatten": "npx hardhat flatten contracts/PredictionMarket.sol > Flattened_PredictionMarket.sol",
+    "flatten": "npx hardhat flatten",
     "lint:js'": "npx eslint '**/*.js'",
     "lint:fix": "npx eslint '**/*.js' --fix",
     "precompile": "yarn clean",
