@@ -386,11 +386,6 @@ contract PredictionMarketNoCommission is Ownable {
         require(_userAddress != address(0), "ERR_INVALID_USER_ADDRESS");
         ConditionInfo storage conditionInfo = conditions[_conditionIndex];
 
-        require(
-            conditionInfo.totalEthClaimable != 0,
-            "ERR_ALL_AMOUNT_ALREADY_CLAIMED"
-        );
-
         BetToken lowBetToken = BetToken(conditionInfo.lowBetToken);
         BetToken highBetToken = BetToken(conditionInfo.highBetToken);
         if (!conditionInfo.isSettled) {
@@ -437,6 +432,11 @@ contract PredictionMarketNoCommission is Ownable {
         lowBetToken.burnAll(_userAddress);
 
         if (totalWinnerRedeemable > 0) {
+            require(
+                conditionInfo.totalEthClaimable != 0,
+                "ERR_ALL_AMOUNT_ALREADY_CLAIMED"
+            );
+
             _userAddress.transfer(totalWinnerRedeemable);
             conditionInfo.totalEthClaimable =
                 conditionInfo.totalEthClaimable -
